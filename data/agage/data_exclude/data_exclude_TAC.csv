@@ -1,4 +1,0 @@
-# Mole fraction data during the ranges in this worksheet will be excluded
-# Date format must by YYYY-MM-DD HH:MM
-# Make sure that the cell format is text rather than Excel's date format
-Species,Instrument,Start,End,Notes

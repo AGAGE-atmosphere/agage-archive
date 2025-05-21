@@ -1,5 +1,0 @@
-# Mole fraction data during the ranges in this worksheet will be excluded
-# Date format must by YYYY-MM-DD HH:MM
-# Make sure that the cell format is text rather than Excel's date format
-Species,Instrument,Start,End,Notes
-hcfc-141b,GCMS-Medusa,1970-01-01 00:00,2023-05-17 00:00,uncorrected drift in quaternery fixed in July 2024
