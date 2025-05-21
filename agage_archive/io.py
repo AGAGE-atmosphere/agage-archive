@@ -969,7 +969,7 @@ def read_gcms_magnum(network, species,
                                     "instrument_date": ds.time[0].dt.strftime("%Y-%m-%d").values}],
                         network=network,
                         species=format_species(species),
-                        site=site,
+                        site=False,
                         public=public,
                         extra_attributes = extra_attrs)
 
