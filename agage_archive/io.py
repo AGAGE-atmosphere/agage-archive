@@ -27,6 +27,7 @@ gcwerks_species = {"c2f6": "pfc-116",
                    "c6h5ch3": "toluene",
                    "c3h8": "propane",
                    "c2h6": "ethane",
+                   "c2h4": "ethene",
                    "c2h2": "ethyne",
                    "c3h6": "c-propane",
                    }
