@@ -344,7 +344,7 @@ def run_individual_instrument(network, instrument,
 
     if has_errors:
         # save errors to file
-        with open(data_file_path("error_log_individual.txt", network=network, errors="ignore"), "w") as f:
+        with open(data_file_path("error_log_individual.txt", network=network, errors="ignore"), "a") as f:
             # write the date and time of the error
             f.write("Processing attempted on " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
             for error in error_log:
@@ -509,7 +509,7 @@ def run_combined_instruments(network,
 
     if has_errors:
         # save errors to file
-        with open(data_file_path("error_log_combined.txt", network=network, errors="ignore"), "w") as f:
+        with open(data_file_path("error_log_combined.txt", network=network, errors="ignore"), "a") as f:
             # write the date and time of the error
             f.write("Processing attempted on " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
             for error in error_log:
