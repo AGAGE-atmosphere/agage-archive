@@ -375,7 +375,7 @@ def test_read_gcms_magnum_file():
 
 def test_read_gcms_magnum():
 
-    network = "agage"
+    network = "agage_test"
     species = "hfc-134a"
 
     ds = read_gcms_magnum(network, species,

@@ -1,6 +1,0 @@
-# Mole fraction data during the ranges in this worksheet will be excluded
-# Date format must by YYYY-MM-DD HH:MM
-# Make sure that the cell format is text rather than Excel's date format
-Species,Instrument,Start,End,Notes
-hfc-32,GCMS-Medusa,2014-03-01 00:00,2015-08-31 00:00,From Ray Wang's public release tables AGAGE 66
-hfc-125,GCMS-Medusa,2014-03-01 00:00,2015-08-31 00:00,From Ray Wang's public release tables AGAGE 66

@@ -27,6 +27,7 @@ gcwerks_species = {"c2f6": "pfc-116",
                    "c6h5ch3": "toluene",
                    "c3h8": "propane",
                    "c2h6": "ethane",
+                   "c2h4": "ethene",
                    "c2h2": "ethyne",
                    "c3h6": "c-propane",
                    }
@@ -576,7 +577,7 @@ def read_ale_gage(network, species, site, instrument,
     Returns:
         pd.DataFrame: Pandas dataframe containing file contents
     """
-    if network not in ["agage", "agage_test"]:
+    if "agage" not in network:
         raise ValueError("network must be agage or agage_test")
     
     if instrument not in ["ALE", "GAGE"]:
@@ -969,7 +970,7 @@ def read_gcms_magnum(network, species,
                                     "instrument_date": ds.time[0].dt.strftime("%Y-%m-%d").values}],
                         network=network,
                         species=format_species(species),
-                        site=site,
+                        site=False,
                         public=public,
                         extra_attributes = extra_attrs)
 
