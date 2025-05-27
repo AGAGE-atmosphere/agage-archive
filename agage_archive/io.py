@@ -576,7 +576,7 @@ def read_ale_gage(network, species, site, instrument,
     Returns:
         pd.DataFrame: Pandas dataframe containing file contents
     """
-    if network not in ["agage", "agage_test"]:
+    if "agage" not in network:
         raise ValueError("network must be agage or agage_test")
     
     if instrument not in ["ALE", "GAGE"]:
