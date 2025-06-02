@@ -207,7 +207,7 @@ def run_individual_site(site, species, network, instrument,
             else:
                 if top_level_only:
                     raise ValueError(f"Looks like combined instruments has been run for {species} at {site}, but top_level_only is set to True")
-            
+
             for output_subpath in folders:
 
                 if "individual" in output_subpath:
@@ -238,24 +238,27 @@ def run_individual_site(site, species, network, instrument,
                 if baseline:
                     if (ds_baseline.time != ds.time).any():
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
-                    ds_baseline.attrs["instrument_selection"] = instrument_selection_text_str
-                    output_dataset(ds_baseline, network, instrument=instrument_str,
-                            output_subpath=output_subpath + "/baseline-flags",
-                            end_date=rs.loc[species, site],
-                            extra="git-baseline",
-                            public=public,
-                            verbose=verbose)
-                    
-                    if monthly:
-                        ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
-                        ds_baseline_monthly.attrs["instrument_selection"] = instrument_selection_text_str
-                        output_dataset(ds_baseline_monthly, network, instrument=instrument_str,
-                            output_subpath=output_subpath + "/monthly-baseline",
-                            end_date=rs.loc[species, site],
-                            extra="monthly-baseline",
-                            public=public,
-                            verbose=verbose)
+                    # JP added 2025-06-02 - we want to continue even if pollution flags are missing for a species
+                    try:
+                        ds_baseline.attrs["instrument_selection"] = instrument_selection_text_str
+                        output_dataset(ds_baseline, network, instrument=instrument_str,
+                                output_subpath=output_subpath + "/baseline-flags",
+                                end_date=rs.loc[species, site],
+                                extra="git-baseline",
+                                public=public,
+                                verbose=verbose)
 
+                        if monthly:
+                            ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
+                            ds_baseline_monthly.attrs["instrument_selection"] = instrument_selection_text_str
+                            output_dataset(ds_baseline_monthly, network, instrument=instrument_str,
+                                output_subpath=output_subpath + "/monthly-baseline",
+                                end_date=rs.loc[species, site],
+                                extra="monthly-baseline",
+                                public=public,
+                                verbose=verbose)
+                    except Exception as e:
+                        error_log.append(get_error(e))
                 else:
                     if monthly:
                         raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
@@ -344,7 +347,7 @@ def run_individual_instrument(network, instrument,
 
     if has_errors:
         # save errors to file
-        with open(data_file_path("error_log_individual.txt", network=network, errors="ignore"), "w") as f:
+        with open(data_file_path("error_log_individual.txt", network=network, errors="ignore"), "a") as f:
             # write the date and time of the error
             f.write("Processing attempted on " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
             for error in error_log:
@@ -509,7 +512,7 @@ def run_combined_instruments(network,
 
     if has_errors:
         # save errors to file
-        with open(data_file_path("error_log_combined.txt", network=network, errors="ignore"), "w") as f:
+        with open(data_file_path("error_log_combined.txt", network=network, errors="ignore"), "a") as f:
             # write the date and time of the error
             f.write("Processing attempted on " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
             for error in error_log:
@@ -641,56 +644,3 @@ def run_all(network,
         print("!!! Errors occurred during processing. See error_log_combined.txt for details")
     if data_file_path("error_log_individual.txt", network=network, errors="ignore").exists():
         print("!!! Errors occurred during processing. See error_log_individual.txt for details")
-
-
-def preprocess():
-    """Preprocess data files before running the main script
-    Hopefully this will become redundant in the future
-    
-    """
-
-    from pathlib import Path
-
-    paths = Paths("agage")
-
-    md_folder = data_file_path("", "agage", sub_path=paths.md_path)
-    # For CGO H2 data, the PDD is mis-labelled (Issue #47)
-    if (md_folder / "AGAGE-GCMD_CGO_h2_pdd.nc").exists():
-        os.system(f"cp {md_folder / 'AGAGE-GCMD_CGO_h2_pdd.nc'} {md_folder / 'AGAGE-GCPDD_CGO_h2.nc'}")
-
-    # Copy TAC GCMD data into the AGAGE MD folder (not synced with the main archive at the mo)
-    decc_path = Path("/agage/summary/netcdf-decc/md")
-    decc_md_co = decc_path / "AGAGE-GCMD_TAC_co.nc"
-    decc_md_n2o = decc_path / "AGAGE-GCMD_TAC_n2o.nc"
-    decc_md_sf6 = decc_path / "AGAGE-GCMD_TAC_sf6.nc"
-    if (decc_md_co).exists():
-        os.system(f"cp {decc_md_co} {md_folder / 'AGAGE-GCMD_TAC_co.nc'}")
-    if (decc_md_n2o).exists():
-        os.system(f"cp {decc_md_n2o} {md_folder / 'AGAGE-GCMD_TAC_n2o.nc'}")
-    if (decc_md_sf6).exists():
-        os.system(f"cp {decc_md_sf6} {md_folder / 'AGAGE-GCMD_TAC_sf6.nc'}")
-
-    # Copy a frozen copy of the TOB SF6 ECD (not synced with the main archive at the mo)
-    tobsf6_path = Path("/data/summary/netcdf-other/md")
-    tobsf6 = tobsf6_path / "AGAGE-GCECD_TOB_sf6.nc"
-    if (tobsf6).exists():
-        os.system(f"cp {tobsf6} {md_folder / 'AGAGE-GCECD_TOB_sf6.nc'}")
-
-
-if __name__ == "__main__":
-
-    #preprocess()
-
-    start_time = time.time()
-
-    print("####################################")
-    print("#####Processing public archive######")
-    print("####################################")
-    run_all("agage", public=True)
-
-    # print("####################################")
-    # print("#####Processing private archive#####")
-    # print("####################################")
-    # run_all("agage", species = ["cfc-11"], public=False)
-
-    print(f"Time taken: {time.time() - start_time:.2f} seconds")
