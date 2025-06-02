@@ -207,7 +207,7 @@ def run_individual_site(site, species, network, instrument,
             else:
                 if top_level_only:
                     raise ValueError(f"Looks like combined instruments has been run for {species} at {site}, but top_level_only is set to True")
-            
+
             for output_subpath in folders:
 
                 if "individual" in output_subpath:
@@ -238,24 +238,27 @@ def run_individual_site(site, species, network, instrument,
                 if baseline:
                     if (ds_baseline.time != ds.time).any():
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
-                    ds_baseline.attrs["instrument_selection"] = instrument_selection_text_str
-                    output_dataset(ds_baseline, network, instrument=instrument_str,
-                            output_subpath=output_subpath + "/baseline-flags",
-                            end_date=rs.loc[species, site],
-                            extra="git-baseline",
-                            public=public,
-                            verbose=verbose)
-                    
-                    if monthly:
-                        ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
-                        ds_baseline_monthly.attrs["instrument_selection"] = instrument_selection_text_str
-                        output_dataset(ds_baseline_monthly, network, instrument=instrument_str,
-                            output_subpath=output_subpath + "/monthly-baseline",
-                            end_date=rs.loc[species, site],
-                            extra="monthly-baseline",
-                            public=public,
-                            verbose=verbose)
+                    # JP added 2025-06-02 - we want to continue even if pollution flags are missing for a species
+                    try:
+                        ds_baseline.attrs["instrument_selection"] = instrument_selection_text_str
+                        output_dataset(ds_baseline, network, instrument=instrument_str,
+                                output_subpath=output_subpath + "/baseline-flags",
+                                end_date=rs.loc[species, site],
+                                extra="git-baseline",
+                                public=public,
+                                verbose=verbose)
 
+                        if monthly:
+                            ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
+                            ds_baseline_monthly.attrs["instrument_selection"] = instrument_selection_text_str
+                            output_dataset(ds_baseline_monthly, network, instrument=instrument_str,
+                                output_subpath=output_subpath + "/monthly-baseline",
+                                end_date=rs.loc[species, site],
+                                extra="monthly-baseline",
+                                public=public,
+                                verbose=verbose)
+                    except Exception as e:
+                        error_log.append(get_error(e))
                 else:
                     if monthly:
                         raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
