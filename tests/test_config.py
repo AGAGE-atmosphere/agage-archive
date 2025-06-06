@@ -56,13 +56,10 @@ def test_paths():
     # If we try to retrieve a path that doesn't exist with errors ignored, it should not error
     path = Paths("non_existent_network", errors="ignore")
 
-    # Test for public or private output path
+    # Test for path
     path = Paths("agage_test", errors="ignore")
     assert path.output_path == \
               config["paths"]["agage_test"]["output_path"]
-    path = Paths("agage_test", public=False, errors="ignore")
-    assert path.output_path == \
-              config["paths"]["agage_test"]["output_path_private"]
 
 
 def test_data_file_path():
@@ -129,7 +126,7 @@ def test_output_path():
         config = yaml.safe_load(f)
 
     # Check that some of the agage_test paths are as expected
-    # First check for a public file
+    # First check for an output file
     path = Paths("agage_test", errors="ignore")
     out_path_true = path.data / "agage_test" / \
         config["paths"]["agage_test"]["output_path"]
@@ -141,15 +138,3 @@ def test_output_path():
     assert out_path == out_path_true
     assert filename == "agage_test-gcms-medusa_thd_cfc-11_testing-v1.nc"
 
-    # Next check for a private file
-    path = Paths("agage_test", errors="ignore", public=False)
-    out_path_true = path.data / "agage_test" / \
-        config["paths"]["agage_test"]["output_path_private"]
-
-    out_path, filename = output_path("agage_test",
-                                    "cfc-11", "THD", "gcms-medusa",
-                                    extra="testing", version="v1",
-                                    public=False,
-                                    errors="ignore")
-    assert out_path == out_path_true
-    assert filename == "agage_test-gcms-medusa_thd_cfc-11_testing-v1.nc"

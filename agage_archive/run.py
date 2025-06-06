@@ -39,19 +39,17 @@ def get_error(e):
     return f"{error_type} in stack: {' / '.join(stack_files_and_lines)}. {str(e)}"
 
 
-def delete_archive(network, public = True):
+def delete_archive(network):
     """Delete all files in output directory before running
 
     Args:
         network (str): Network for output filenames
-        public (bool): Whether the dataset is for public release
     """
 
-    path = Paths(network, errors="ignore", public=public)
+    path = Paths(network, errors="ignore")
 
     try:
         out_pth, _ = output_path(network, "_", "_", "_",
-                                public=public,
                                 errors="ignore_inputs")
     except FileNotFoundError:
         print(f"Output directory or archive for does not exist, continuing")
@@ -83,16 +81,14 @@ def delete_archive(network, public = True):
                 rmtree(pth)
 
 
-def create_empty_archive(network, public = True):
+def create_empty_archive(network):
     """Create an empty output zip file or folders
 
     Args:
         network (str): Network for output filenames
-        public (bool): Whether the dataset is for public release
     """
 
     out_pth, _ = output_path(network, "_", "_", "_",
-                            public=public,
                             errors="ignore")
 
     if out_pth.suffix == ".zip" and not out_pth.exists():
@@ -139,7 +135,6 @@ def run_individual_site(site, species, network, instrument,
                         baseline=False,
                         monthly=False,
                         verbose=False,
-                        public=True,
                         resample=True,
                         top_level_only=False):
     """Process individual data files for a given site.
@@ -159,7 +154,6 @@ def run_individual_site(site, species, network, instrument,
         baseline (bool): Process baselines. Boolean as only one baseline flag is available (GIT)
         monthly (bool): Produce monthly baseline files
         verbose (bool): Print progress to screen
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory, 
             and ignore the individual instrument folder. Default to False.
@@ -170,7 +164,7 @@ def run_individual_site(site, species, network, instrument,
     else:
         site_str = ""
 
-    paths = Paths(network, public=public, errors="ignore_outputs", site = site_str)
+    paths = Paths(network, errors="ignore_outputs", site = site_str)
 
     error_log = []
 
@@ -179,8 +173,9 @@ def run_individual_site(site, species, network, instrument,
         if rs.loc[species, site].lower() != "x":
 
             ds = read_function(network, species, site, instrument,
-                            public = public, verbose=verbose,
-                            resample=resample, scale=choose_scale_defaults_file(network, instrument))
+                            verbose=verbose,
+                            resample=resample,
+                            scale=choose_scale_defaults_file(network, instrument))
 
             if baseline:
                 ds_baseline = read_baseline_function(network, species, site, instrument,
@@ -232,20 +227,18 @@ def run_individual_site(site, species, network, instrument,
                 output_dataset(ds, network, instrument=instrument_str,
                             output_subpath=output_subpath,
                             end_date=rs.loc[species, site],
-                            public=public,
                             verbose=verbose)
 
                 if baseline:
                     if (ds_baseline.time != ds.time).any():
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
-                    # JP added 2025-06-02 - we want to continue even if pollution flags are missing for a species
+                    # Try-except to catch errors when baseline flags are missing, but still continue processing
                     try:
                         ds_baseline.attrs["instrument_selection"] = instrument_selection_text_str
                         output_dataset(ds_baseline, network, instrument=instrument_str,
                                 output_subpath=output_subpath + "/baseline-flags",
                                 end_date=rs.loc[species, site],
                                 extra="git-baseline",
-                                public=public,
                                 verbose=verbose)
 
                         if monthly:
@@ -255,7 +248,6 @@ def run_individual_site(site, species, network, instrument,
                                 output_subpath=output_subpath + "/monthly-baseline",
                                 end_date=rs.loc[species, site],
                                 extra="monthly-baseline",
-                                public=public,
                                 verbose=verbose)
                     except Exception as e:
                         error_log.append(get_error(e))
@@ -282,7 +274,6 @@ def run_individual_instrument(network, instrument,
                               monthly = False,
                               species = [],
                               sites = [],
-                              public=True,
                               resample=True,
                               top_level_only=False):
     """Process individual data files for a given instrument.
@@ -295,13 +286,12 @@ def run_individual_instrument(network, instrument,
         baseline (str): Baseline flag to use. If empty, don't process baselines
         monthly (bool): Produce monthly baseline files
         species (list): List of species to process. If empty, process all species
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
             and ignore the individual instrument folder. Default to False.
     """
     
-    rs = read_release_schedule(network, instrument, public=public)
+    rs = read_release_schedule(network, instrument)
 
     if instrument.upper() == "ALE" or instrument.upper() == "GAGE":
         read_function = read_ale_gage
@@ -340,7 +330,7 @@ def run_individual_instrument(network, instrument,
                     print(f"Processing {sp} at {site} for {instrument}")
                 result = run_individual_site(site, sp, network, instrument,
                                             rs, read_function, read_baseline_function, instrument_out,
-                                            baseline, monthly, verbose, public, resample, top_level_only)
+                                            baseline, monthly, verbose, resample, top_level_only)
                 error_log.append(result)
 
     has_errors = any([error[2] for error in error_log])
@@ -359,7 +349,6 @@ def run_combined_site(site, species, network,
                     baseline=False,
                     monthly=False,
                     verbose=False,
-                    public=True,
                     resample=True):
     """Process combined data files for a given site.
     Reads the data selection file to determine which species to process
@@ -371,7 +360,6 @@ def run_combined_site(site, species, network,
         baseline (bool): Process baselines. Boolean as only one baseline flag is available (GIT)
         monthly (bool): Produce monthly baseline files
         verbose (bool): Print progress to screen
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
     """
 
@@ -408,14 +396,14 @@ def run_combined_site(site, species, network,
             if verbose:
                 print(f"... combining datasets for {sp} at {site}")
             ds = combine_datasets(network, sp, site,
-                                verbose=verbose, public=public, resample=resample)
+                                verbose=verbose, resample=resample)
 
             if baseline:
                 if verbose:
                     print(f"... combining baselines for {sp} at {site}")
                 # Note that GIT baselines is hard-wired here because Met Office not available for ALE/GAGE
                 ds_baseline = combine_baseline(network, sp, site,
-                                            verbose=verbose, public=public)
+                                            verbose=verbose)
 
             else:
                 ds_baseline = None
@@ -430,7 +418,6 @@ def run_combined_site(site, species, network,
             output_dataset(ds, network,
                         output_subpath=output_subpath,
                         instrument="",
-                        public=public,
                         verbose=verbose)
             
             if baseline:
@@ -440,7 +427,6 @@ def run_combined_site(site, species, network,
                             output_subpath=output_subpath + "/baseline-flags",
                             instrument="",
                             extra="git-baseline",
-                            public=public,
                             verbose=verbose)
 
                 if monthly:
@@ -449,7 +435,6 @@ def run_combined_site(site, species, network,
                             output_subpath=output_subpath + "/monthly-baseline",
                             instrument="",
                             extra="monthly-baseline",
-                            public=public,
                             verbose=verbose)
 
             else:
@@ -471,7 +456,6 @@ def run_combined_instruments(network,
                              verbose = False,
                              species = [],
                              sites = [],
-                             public = True,
                              resample=True):
     """Process combined data files for a given network.
     Reads the data selection file to determine which sites to process
@@ -482,7 +466,6 @@ def run_combined_instruments(network,
         monthly (bool): Produce monthly baseline files
         verbose (bool): Print progress to screen
         species (list): List of species to process. If empty, process all species
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
     """
 
@@ -505,7 +488,7 @@ def run_combined_instruments(network,
     error_log = []
 
     for site in sites:
-        result = run_combined_site(site, species, network, baseline, monthly, verbose, public, resample)
+        result = run_combined_site(site, species, network, baseline, monthly, verbose, resample)
         error_log.extend(result)
 
     has_errors = any([error[2] for error in error_log])
@@ -529,7 +512,6 @@ def run_all(network,
             instrument_exclude = [],
             species = [],
             sites = [],
-            public = True,
             resample=True,
             top_level_only=False,):
     """Process data files for multiple instruments. Reads the release schedule to determine which
@@ -544,7 +526,6 @@ def run_all(network,
         monthly (bool): Produce monthly baseline files
         verbose (bool): Print progress to screen
         species (list): List of species to process. If empty, process all species
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
             and ignore the individual instrument folder. Default to False.
@@ -580,7 +561,7 @@ def run_all(network,
     if not isinstance(sites, list):
         raise TypeError("sites must be a list")
 
-    path = Paths(network, public = public, errors="ignore")
+    path = Paths(network, errors="ignore")
 
     # Delete log files, if they exist
     for log_file in ["error_log_combined.txt", "error_log_individual.txt"]:
@@ -594,17 +575,17 @@ def run_all(network,
         raise AttributeError("Output path not set in config.yaml")
 
     if delete:
-        delete_archive(network, public=public)
+        delete_archive(network)
         
     # If either out_pth is a zip file that doesn't exist, create
-    create_empty_archive(network, public=public)
+    create_empty_archive(network)
 
     # Must run combined instruments first
     if combined:
         run_combined_instruments(network,
                                 baseline=baseline, verbose=True,
                                 monthly=monthly, species=species, sites=sites,
-                                public=public, resample=resample)
+                                resample=resample)
 
     # If include is empty, process all instruments in release schedule
     if len(instrument_include) == 0:
@@ -622,20 +603,20 @@ def run_all(network,
             run_individual_instrument(network, instrument, 
                                     baseline=baseline_flag, verbose=True,
                                     monthly=monthly, species=species, sites=sites,
-                                    public=public, resample=resample, top_level_only=top_level_only)
+                                    resample=resample, top_level_only=top_level_only)
 
     # Incorporate README and CHANGELOG into output directory or zip file
     try:
         readme_file = data_file_path(filename='README.md',
                                     network=network, errors = "ignore_inputs")
-        copy_to_archive(readme_file, network, public=public)
+        copy_to_archive(readme_file, network)
     except FileNotFoundError:
         print("No README file found")
 
     try:
         changelog_file = data_file_path(filename='CHANGELOG.md',
                                     network=network, errors = "ignore_inputs")
-        copy_to_archive(changelog_file, network, public=public)
+        copy_to_archive(changelog_file, network)
     except FileNotFoundError:
         print("No CHANGELOG file found")
 

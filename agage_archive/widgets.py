@@ -15,20 +15,19 @@ instrument_site_filenames = {}
 variable_names = list(variables.keys())
 
 
-def file_search_species(network, file_type, species, public = True):
+def file_search_species(network, file_type, species):
     """ Search for files containing species
     
     Args:
         network (str): Network
         file_type (str): File type ("high-frequency", "monthly-baseline" or "individual-instruments")
         species (str): Species to search for
-        public (bool): Search public or private archive
 
     Returns:
         list: List of files containing species        
     """
     
-    paths = Paths(network, errors="ignore_inputs", public=public)
+    paths = Paths(network, errors="ignore_inputs")
 
     if file_type == "high-frequency":
         pattern = f"{species}/*.nc"
@@ -72,7 +71,6 @@ def instruments_sites(files):
 def update_instrument_site(species,
                         file_type,
                         network,
-                        public,
                         instrument_site_dropdown):
     """ Update instrument and site dropdown
 
@@ -80,7 +78,6 @@ def update_instrument_site(species,
         species (str): Species
         file_type (str): File type ("high-frequency", "monthly-baseline" or "individual-instruments")
         network (str): Network
-        public (str): Load from public or private archive (public or private)
         instrument_site_dropdown (ipywidgets.Dropdown): Dropdown widget
     """
     def find_duplicates(options):
@@ -106,8 +103,7 @@ def update_instrument_site(species,
     # Clear contents of instrument_site_filenames
     instrument_site_filenames.clear()
 
-    files = file_search_species(network, file_type, species,
-                                public = {"public": True, "private": False}[public])
+    files = file_search_species(network, file_type, species)
 
     instruments, sites = instruments_sites(files)
 
@@ -147,19 +143,18 @@ def get_filenames(instrument_sites):
     return [instrument_site_filenames[instrument_site] for instrument_site in instrument_sites]
 
 
-def load_datasets(network, filenames, public = True):
+def load_datasets(network, filenames):
     """ Load datasets from filenames
 
     Args:
         network (str): Network
         filenames (list): List of filenames
-        public (bool): Load from public or private archive
 
     Returns:
         list: List of datasets
     """
 
-    paths = Paths(network, errors="ignore_inputs", public=public)
+    paths = Paths(network, errors="ignore_inputs")
 
     datasets = []
     for filename in filenames:
@@ -172,7 +167,7 @@ def load_datasets(network, filenames, public = True):
     return datasets
 
 
-def plot_to_output(sender, network, species, instrument_site, public, variable,
+def plot_to_output(sender, network, species, instrument_site, variable,
                    output_widget, mode="lines"):
     """ Plot to output widget
 
@@ -193,8 +188,7 @@ def plot_to_output(sender, network, species, instrument_site, public, variable,
 
     filenames = get_filenames(instrument_site)
 
-    datasets = load_datasets(network, filenames,
-                            public = {"public": True, "private": False}[public])
+    datasets = load_datasets(network, filenames)
 
     renderer = is_jupyterlab_session()
 
@@ -206,7 +200,7 @@ def plot_to_output(sender, network, species, instrument_site, public, variable,
         fig.show(renderer=renderer)
 
 
-def show_netcdf_info(sender, network, instrument_site, public,
+def show_netcdf_info(sender, network, instrument_site, 
                     output_widget):
     """ Show NetCDF info to output widget
 
@@ -214,7 +208,6 @@ def show_netcdf_info(sender, network, instrument_site, public,
         sender (ipywidgets.Button): Button widget
         species (str): Species
         network_site (str): Network and site
-        public (str): Load from public or private archive (public or private)
         output_widget (ipywidgets.Output): Output widget
     """
 
@@ -224,8 +217,7 @@ def show_netcdf_info(sender, network, instrument_site, public,
             print("Please select a network and site") 
 
     filenames = get_filenames(instrument_site)
-    datasets = load_datasets(network, filenames,
-                            public = {"public": True, "private": False}[public])
+    datasets = load_datasets(network, filenames)
 
     with output_widget:
         clear_output()
@@ -262,14 +254,6 @@ def dashboard(network,
 
     species = sorted(set(species))
 
-    # Public or private archive radio button
-    public_button = widgets.RadioButtons(
-        options=["public", "private"],
-        description='Archive:',
-        disabled=False,
-        default="public"
-    )
-
     # Create dropdown widget
     species_dropdown = widgets.Dropdown(
         options=species,
@@ -291,7 +275,6 @@ def dashboard(network,
         options=update_instrument_site(species[0],
                                     file_types[0],
                                     network,
-                                    "public",
                                     None),
         description='Site, instrument:',
         disabled=False,
@@ -322,7 +305,6 @@ def dashboard(network,
                             update_instrument_site(change["new"],
                                                 file_type_dropdown.value,
                                                 network,
-                                                public_button.value,
                                                 instrument_site),
                             names="value")
 
@@ -330,32 +312,20 @@ def dashboard(network,
                             update_instrument_site(species_dropdown.value,
                                             change["new"],
                                             network,
-                                            public_button.value,
                                             instrument_site),
                             names="value")
-
-    public_button.observe(lambda change:
-                        update_instrument_site(species_dropdown.value,
-                                        file_type_dropdown.value,
-                                        network,
-                                        change["new"],
-                                        instrument_site),
-                        names="value")
 
     # Plot to output when button is clicked
     plot_button.on_click(lambda x: plot_to_output(x, network,
                                                 species_dropdown.value,
                                                 instrument_site.value,
-                                                public_button.value,
                                                 variable_dropdown.value,
                                                 output,
                                                 mode=mode))
     plot_button.on_click(lambda x: show_netcdf_info(x, network,
                                                     instrument_site.value,
-                                                    public_button.value,
                                                     output_netcdf))
 
-    display(public_button)
     display(species_dropdown)
     display(file_type_dropdown)
     display(instrument_site)

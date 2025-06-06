@@ -382,7 +382,6 @@ def test_read_gcms_magnum():
                         verbose = True,
                         scale = "defaults",
                         baseline = False,
-                        public = True,
                         resample = False,
                         dropna = True)
 

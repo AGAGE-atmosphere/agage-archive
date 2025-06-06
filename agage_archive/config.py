@@ -13,7 +13,6 @@ class Paths():
                 network = "",
                 this_repo = False,
                 errors = "ignore",
-                public = True,
                 site = ""):
         """Class to store paths to data folders
         
@@ -26,8 +25,6 @@ class Paths():
                 If "ignore", return path.
                 If "ignore_inputs", ignore errors in input paths. 
                 Defaults to "raise".
-            public (bool, optional): If True, output path is taken from output_path.
-                If False, output path is taken from output_path_private. Defaults to True.
 
         Raises:
             FileNotFoundError: If config file doesn't exist
@@ -131,7 +128,6 @@ class Paths():
                     raise FileNotFoundError(f"{full_path} is not a folder or zip archive")
 
         # Don't need to do the remaining checks if errors is set to ignore_outputs
-        #TODO: Shouldn't this check whether public is set to True or False?
         if "output_path" not in config["paths"][network]:
             if errors == "raise" or errors == "ignore_inputs":
                 raise KeyError(f"Output path not found in config file")
@@ -139,10 +135,7 @@ class Paths():
                 return
             
         # Set OUTPUT path
-        if public:
-            self.output_path = config["paths"][network]["output_path"]
-        else:
-            self.output_path = config["paths"][network]["output_path_private"]
+        self.output_path = config["paths"][network]["output_path"]
         
         # Test that output path exists
         if errors == "raise" or errors == "ignore_inputs":
@@ -187,7 +180,6 @@ def setup(network = ""):
                     "gage_path": "gage",
                     "magnum_path": "data-gcms-magnum.tar.gz",
                     "output_path": "output",
-                    "output_path_private": "output-private"
                 },
             "agage":
                 {
@@ -199,7 +191,6 @@ def setup(network = ""):
                     "gage_path": "ale_gage_sio1993/gage",
                     "magnum_path": "data-gcms-magnum.tar.gz",
                     "output_path": "agage-public-archive.zip",
-                    "output_path_private" : "agage-private-archive.zip"
             }
         }
     else:
@@ -211,7 +202,6 @@ def setup(network = ""):
                     "gcms_path": "",
                     "gcms_flask_path": "",
                     "output_path": "output",
-                    "output_path_private": "output-private"
                 }
         }
 
@@ -397,9 +387,14 @@ def open_data_file(filename,
         return (pth / filename).open("rb")
 
 
-def output_path(network, species, site, instrument,
-                extra = "", version="", public=True,
-                errors="ignore_inputs", network_out = ""):
+def output_path(network,
+                species,
+                site,
+                instrument,
+                extra = "",
+                version="",
+                errors="ignore_inputs",
+                network_out = ""):
     '''Determine output path and filename
 
     Args:
@@ -409,7 +404,6 @@ def output_path(network, species, site, instrument,
         instrument (str): Instrument
         extra (str, optional): Extra string to add to filename. Defaults to "".
         version (str, optional): Version number. Defaults to "".
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         errors (str, optional): How to handle errors if path doesn't exist. Defaults to "raise".
         network_out (str, optional): Network for filename. Defaults to "".
 
@@ -422,7 +416,7 @@ def output_path(network, species, site, instrument,
     '''
 
     # Get paths. Ignore errors since outputs may not exist at this stage
-    paths = Paths(network, public=public, errors="ignore")
+    paths = Paths(network, errors="ignore")
 
     version_str = f"{version.replace(' ','')}" if version else ""
 
@@ -456,15 +450,14 @@ def output_path(network, species, site, instrument,
     return output_path, filename
 
 
-def copy_to_archive(src_file, network, public = True):
+def copy_to_archive(src_file, network):
     """Copy file to archive. Structure is data/network/sub_path
     sub_path can be a zip archive
 
     Args:
         src_file (str): Source file
         network (str, optional): Network. Defaults to "".
-        public (bool, optional): If True, copy to public archive. If False, copy to private archive.
-            Defaults to True.
+
     Raises:
         FileNotFoundError: Can't find file
 
@@ -473,7 +466,7 @@ def copy_to_archive(src_file, network, public = True):
     """
 
     archive_path, _ = output_path(network, "_", "_", "_",
-                                public=public, errors = "ignore_inputs")
+                                errors = "ignore_inputs")
 
     if archive_path.suffix == ".zip":
         with ZipFile(archive_path, "a") as z:

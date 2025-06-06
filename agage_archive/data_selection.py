@@ -79,8 +79,7 @@ def read_data_combination(network, species, site,
 
 def read_release_schedule(network, instrument,
                           species = None,
-                          site = None,
-                          public=True):
+                          site = None):
     '''Read release schedule from csv files
 
     Args:
@@ -88,7 +87,6 @@ def read_release_schedule(network, instrument,
         instrument (str): Instrument
         species (str): Species
         site (str): Site code
-        public (bool, optional): Whether the dataset is for public release. Default to True
 
     Returns:
         pd.DataFrame: Release schedule
@@ -117,10 +115,6 @@ def read_release_schedule(network, instrument,
 
     # If NaN in df, replace with general end date
     df = df.fillna(general_end_date)
-    
-    # For private release data set general end date far into future
-    if not public:
-        df = df.where(df.values != general_end_date, "2100-01-01 00:00")
 
     df.set_index("Species", inplace=True)
 

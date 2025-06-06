@@ -80,8 +80,7 @@ def test_read_release_schedule():
 
     df = read_release_schedule("agage_test", "GCMD",
                           species = None,
-                          site = None,
-                          public = True)
+                          site = None)
 
     # Check that full dataframe has been returned
     assert df.shape == (10, 5)
