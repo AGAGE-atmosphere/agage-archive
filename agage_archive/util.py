@@ -4,6 +4,7 @@ import pytz
 import yaml
 import pandas as pd
 import re
+import xarray as xr
 
 from agage_archive.config import Paths, open_data_file, data_file_path
 
@@ -265,3 +266,124 @@ def parse_fortran_format(format_string):
     parse_list_of_tokens(format_string)
 
     return column_specs, column_types
+
+
+def insert_into_archive_name(path, suffix):
+    """Insert a suffix into the archive name before the file extension or folder name.
+    Args:
+        name (str): The original archive name, e.g. "archive.zip" or "folder/"
+        suffix (str): The suffix to insert, e.g. "-csv"
+    Returns:
+        str: The modified archive name with the suffix inserted
+    """
+
+    # If name is a Path object, convert it to string
+    if isinstance(path, os.PathLike):
+        name = str(path)
+        isPath = True
+    else:
+        name = path
+        isPath = False
+
+    if ".zip" in name:
+        # If the name is a zip file, we need to insert the suffix before the .zip
+        parts = name.split(".zip")
+        name = f"{parts[0]}{suffix}.zip"
+    else:
+        # If the name is not a zip file, assume it's a folder, which may have a trailing slash
+        parts = name.rsplit("/", 1)
+        if len(parts) == 1:
+            # No slash found, just append the suffix
+            name = f"{parts[0]}{suffix}"
+        else:
+            # Insert the suffix before the last part (the folder name)
+            name = f"{parts[0]}{suffix}/"
+
+    # If the original path was a Path object, convert back to Path
+    if isPath:
+        return Paths().root / name
+    else:
+        return name
+
+
+def nc_to_csv(ds):
+    """Convert an xarray Dataset to a CSV format with header and data.
+    Args:
+        ds (xarray.Dataset): The xarray Dataset to convert
+    Returns:
+        Tuple[List[str], pandas.DataFrame]: A tuple containing:
+            - header: A list of strings representing the header
+            - df: A pandas DataFrame containing the data
+    """
+
+    # Prepare header from attributes
+    header = ["# GLOBAL ATTRIBUTES:", "# ------------------------------"]
+    for attr, attr_val in sorted(ds.attrs.items()):
+        header_line = f"# {attr}: {str(attr_val)}"
+        header.append(header_line)
+
+    # For each variable, add its attributes to the header
+    header.append("# VARIABLE ATTRIBUTES:")
+    for var_name, var in ds.data_vars.items():
+        header.append(f"# {var_name}:")
+        for attr, attr_val in var.attrs.items():
+            header_line = f"#   {attr}: {str(attr_val)}"
+            header.append(header_line)
+        header.append("# ------------------------------")
+    header.append("# DATA:")
+    # Convert to DataFrame
+    df = ds.to_dataframe().reset_index()
+    # Add year, month, day, hour, minute, second columns
+    if "time" in df.columns:
+        df["year"] = df["time"].dt.year
+        df["month"] = df["time"].dt.month
+        df["day"] = df["time"].dt.day
+        df["hour"] = df["time"].dt.hour
+        df["minute"] = df["time"].dt.minute
+        df["second"] = df["time"].dt.second
+    else:
+        raise ValueError("Dataset does not contain a 'time' variable.")
+
+    # Make the time columns appear at the start of the dataframe
+    columns = list(df.columns)
+    time_columns = ["time", "year", "month", "day", "hour", "minute", "second"]
+    for col in time_columns:
+        if col in columns:
+            columns.remove(col)
+    columns = time_columns + columns
+    df = df[columns]
+
+    return header, df
+
+
+def archive_to_csv(network):
+    """Convert AGAGE archive data files to CSV format.
+    Args:
+        network (str): Network name, e.g. "agage"
+    Returns:
+        None: Writes CSV files to the output directory
+    """
+    from agage_archive.config import Paths, open_data_file, data_file_list
+
+    paths = Paths(network, errors="ignore_inputs")
+
+    _, sub_path, files = data_file_list(network, paths.output_path, errors="ignore_inputs")
+
+    if ".zip" in sub_path:
+        sub_path_csv = f"{sub_path.split('.')[0]}-csv.zip"
+    else:
+        sub_path_csv = f"{sub_path.split('/')[0]}-csv"
+
+    # If the sub_path_csv does not exist, create it
+
+    for f in files:
+        filename_csv = f"{f.split('.nc')[0]}.csv"
+
+        with open_data_file(f, network, sub_path = sub_path) as ncf:
+            with xr.open_dataset(ncf) as nc_ds:
+                ds = nc_ds.load()
+        
+        # Convert to CSV
+        header, df = nc_to_csv(ds)
+
+

@@ -15,6 +15,7 @@ from agage_archive.io import combine_datasets, combine_baseline, \
 from agage_archive.formatting import format_species
 from agage_archive.convert import monthly_baseline
 from agage_archive.definitions import instrument_number, instrument_selection_text
+from agage_archive.util import insert_into_archive_name
 
 
 def get_error(e):
@@ -39,7 +40,7 @@ def get_error(e):
     return f"{error_type} in stack: {' / '.join(stack_files_and_lines)}. {str(e)}"
 
 
-def delete_archive(network):
+def delete_archive(network, archive_suffix=""):
     """Delete all files in output directory before running
 
     Args:
