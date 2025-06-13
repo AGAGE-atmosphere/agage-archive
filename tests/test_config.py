@@ -3,7 +3,7 @@ import yaml
 import json
 
 from agage_archive.config import Paths, data_file_path, \
-    open_data_file, data_file_list, output_path
+    open_data_file, data_file_list, output_path, archive_suffix
 
 
 repo_path = Path(__file__).resolve().parents[1]
@@ -138,3 +138,11 @@ def test_output_path():
     assert out_path == out_path_true
     assert filename == "agage_test-gcms-medusa_thd_cfc-11_testing-v1.nc"
 
+
+def test_archive_suffix():
+    """Test the insert_into_archive_name function with various cases."""
+    assert archive_suffix("archive.zip", "-csv") == "archive-csv.zip"
+    assert archive_suffix("folder/", "-csv") == "folder-csv/"
+    assert archive_suffix("folder", "-csv") == "folder-csv"
+
+    assert archive_suffix(Path("archive.zip"), "-csv").name == Path("archive-csv.zip").name

@@ -2,7 +2,7 @@ import pandas as pd
 import xarray as xr
 from pathlib import Path
 
-from agage_archive.util import parse_fortran_format, nc_to_csv, insert_into_archive_name
+from agage_archive.util import parse_fortran_format, nc_to_csv
 
 
 def test_parse_fortran_format():
@@ -88,13 +88,4 @@ def test_nc_to_csv():
     assert df["hour"].tolist() == [0, 0, 0, 0, 0], "Hour column does not have the expected data."
     assert df["minute"].tolist() == [0, 0, 0, 0, 0], "Minute column does not have the expected data."
     assert df["second"].tolist() == [0, 0, 0, 0, 0], "Second column does not have the expected data."
-
-
-def test_insert_into_archive_name():
-    """Test the insert_into_archive_name function with various cases."""
-    assert insert_into_archive_name("archive.zip", "-csv") == "archive-csv.zip"
-    assert insert_into_archive_name("folder/", "-csv") == "folder-csv/"
-    assert insert_into_archive_name("folder", "-csv") == "folder-csv"
-
-    assert insert_into_archive_name(Path("archive.zip"), "-csv").name == Path("archive-csv.zip").name
 

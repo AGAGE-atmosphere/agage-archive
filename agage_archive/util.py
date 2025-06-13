@@ -6,7 +6,8 @@ import pandas as pd
 import re
 import xarray as xr
 
-from agage_archive.config import Paths, open_data_file, data_file_path
+from agage_archive.config import Paths, open_data_file, data_file_path, \
+    data_file_list, archive_suffix, delete_archive, create_empty_archive
 
 
 def is_number(s):
@@ -268,44 +269,6 @@ def parse_fortran_format(format_string):
     return column_specs, column_types
 
 
-def insert_into_archive_name(path, suffix):
-    """Insert a suffix into the archive name before the file extension or folder name.
-    Args:
-        name (str): The original archive name, e.g. "archive.zip" or "folder/"
-        suffix (str): The suffix to insert, e.g. "-csv"
-    Returns:
-        str: The modified archive name with the suffix inserted
-    """
-
-    # If name is a Path object, convert it to string
-    if isinstance(path, os.PathLike):
-        name = str(path)
-        isPath = True
-    else:
-        name = path
-        isPath = False
-
-    if ".zip" in name:
-        # If the name is a zip file, we need to insert the suffix before the .zip
-        parts = name.split(".zip")
-        name = f"{parts[0]}{suffix}.zip"
-    else:
-        # If the name is not a zip file, assume it's a folder, which may have a trailing slash
-        parts = name.rsplit("/", 1)
-        if len(parts) == 1:
-            # No slash found, just append the suffix
-            name = f"{parts[0]}{suffix}"
-        else:
-            # Insert the suffix before the last part (the folder name)
-            name = f"{parts[0]}{suffix}/"
-
-    # If the original path was a Path object, convert back to Path
-    if isPath:
-        return Paths().root / name
-    else:
-        return name
-
-
 def nc_to_csv(ds):
     """Convert an xarray Dataset to a CSV format with header and data.
     Args:
@@ -363,27 +326,39 @@ def archive_to_csv(network):
     Returns:
         None: Writes CSV files to the output directory
     """
-    from agage_archive.config import Paths, open_data_file, data_file_list
+
+    archive_suffix_str = "-csv"
 
     paths = Paths(network, errors="ignore_inputs")
 
-    _, sub_path, files = data_file_list(network, paths.output_path, errors="ignore_inputs")
+    # Delete the csv archive if it exists and create an empty one
+    delete_archive(network,
+                   archive_suffix_string = archive_suffix_str)
+    create_empty_archive(network, archive_suffix_string = archive_suffix_str)
 
-    if ".zip" in sub_path:
-        sub_path_csv = f"{sub_path.split('.')[0]}-csv.zip"
-    else:
-        sub_path_csv = f"{sub_path.split('/')[0]}-csv"
-
-    # If the sub_path_csv does not exist, create it
+    # Get the file list for the nc archive
+    _, nc_sub_path, files = data_file_list(network,
+                                        paths.output_path,
+                                        errors="ignore_inputs")
 
     for f in files:
         filename_csv = f"{f.split('.nc')[0]}.csv"
 
-        with open_data_file(f, network, sub_path = sub_path) as ncf:
+        with open_data_file(f, network, sub_path = nc_sub_path) as ncf:
             with xr.open_dataset(ncf) as nc_ds:
                 ds = nc_ds.load()
         
         # Convert to CSV
         header, df = nc_to_csv(ds)
+
+        # Write to CSV file
+        with open_data_file(filename_csv, network, 
+                            sub_path = archive_suffix(paths.output_path, archive_suffix_str),
+                            mode = "w") as csv_file:
+            for line in header:
+                csv_file.write(line + "\n")
+            df.to_csv(csv_file, index=False, float_format='%.6f')
+
+        pass
 
 

@@ -4,7 +4,8 @@ from zipfile import ZipFile
 import yaml
 from fnmatch import fnmatch, filter
 import psutil
-from shutil import copy
+from shutil import copy, rmtree
+import os
 
 
 class Paths():
@@ -248,6 +249,9 @@ def data_file_list(network = "",
                 break
             else:
                 pth = p + "/" + pth
+        # remove trailing slash if it exists
+        if pth.endswith("/"):
+            pth = pth[:-1]
         return pth
 
     def remove_sub_directories(files):
@@ -392,6 +396,7 @@ def output_path(network,
                 site,
                 instrument,
                 extra = "",
+                extra_archive = "",
                 version="",
                 errors="ignore_inputs",
                 network_out = ""):
@@ -403,6 +408,7 @@ def output_path(network,
         site (str): Site
         instrument (str): Instrument
         extra (str, optional): Extra string to add to filename. Defaults to "".
+        extra_archive (str, optional): Extra string to add to archive filename or folder. Defaults to "".
         version (str, optional): Version number. Defaults to "".
         errors (str, optional): How to handle errors if path doesn't exist. Defaults to "raise".
         network_out (str, optional): Network for filename. Defaults to "".
@@ -427,11 +433,14 @@ def output_path(network,
             extra = extra[:-1] + "-"
         else:
             extra = extra + "-"
-            
     
+    if extra_archive:
+        archive_path = archive_suffix(paths.output_path,
+                                      extra_archive)
+
     # Can tweak data_file_path to get the output path
     output_path = data_file_path("", network = network,
-                                sub_path = paths.output_path,
+                                sub_path = archive_path,
                                 errors=errors)
     
     # Create filename
@@ -497,6 +506,107 @@ def is_jupyterlab_session():
         return "jupyterlab"
 
     return "notebook"
+
+
+def archive_suffix(path, suffix):
+    """Insert a suffix into the archive name before the file extension or folder name.
+    Args:
+        name (str): The original archive name, e.g. "archive.zip" or "folder/"
+        suffix (str): The suffix to insert, e.g. "-csv"
+    Returns:
+        str: The modified archive name with the suffix inserted
+    """
+
+    # If name is a Path object, convert it to string
+    if isinstance(path, os.PathLike):
+        name = str(path)
+        isPath = True
+    else:
+        name = path
+        isPath = False
+
+    if ".zip" in name:
+        # If the name is a zip file, we need to insert the suffix before the .zip
+        parts = name.split(".zip")
+        name = f"{parts[0]}{suffix}.zip"
+    else:
+        # If the name is not a zip file, assume it's a folder, which may have a trailing slash
+        parts = name.rsplit("/", 1)
+        if len(parts) == 1:
+            # No slash found, just append the suffix
+            name = f"{parts[0]}{suffix}"
+        else:
+            # Insert the suffix before the last part (the folder name)
+            name = f"{parts[0]}{suffix}/"
+
+    # If the original path was a Path object, convert back to Path
+    if isPath:
+        return Paths().root / name
+    else:
+        return name
+
+
+def delete_archive(network, archive_suffix_string=""):
+    """Delete all files in output directory before running
+
+    Args:
+        network (str): Network for output filenames
+        archive_suffix_string (str, optional): Suffix to add to archive name. Defaults to "".
+    """
+
+    path = Paths(network, errors="ignore")
+
+    try:
+        out_pth, _ = output_path(network, "_", "_", "_",
+                                errors="ignore_inputs",
+                                extra_archive=archive_suffix_string)
+    except FileNotFoundError:
+        print(f"Output directory or archive for does not exist, continuing")
+        return
+
+    # Find all files in output directory
+    _, _, files = data_file_list(network=network,
+                                sub_path=archive_suffix(path.output_path, archive_suffix_string),
+                                errors="ignore")
+
+    print(f'Deleting all files in {out_pth}')
+
+    # If out_pth is a zip file, delete it
+    if out_pth.suffix == ".zip" and out_pth.exists():
+        out_pth.unlink()
+    else:
+        # For safety that out_pth is in data/network directory
+        if out_pth.parents[1] == path.data and out_pth.parents[0].name == network:
+            pass
+        else:
+            raise ValueError(f"{out_pth} must be in a data/network directory")
+
+        # Delete all files in output directory
+        for f in files:
+            pth = out_pth / f
+            if pth.is_file():
+                pth.unlink()
+            elif pth.is_dir():
+                rmtree(pth)
+
+
+def create_empty_archive(network, archive_suffix_string=""):
+    """Create an empty output zip file or folders
+
+    Args:
+        network (str): Network for output filenames
+        archive_suffix_string (str, optional): Suffix to add to archive name. Defaults to "".
+    """
+
+    out_pth, _ = output_path(network, "_", "_", "_",
+                            errors="ignore",
+                            extra_archive=archive_suffix_string)
+
+    if out_pth.suffix == ".zip" and not out_pth.exists():
+        with ZipFile(out_pth, "w") as f:
+            pass
+    elif out_pth.is_dir():
+        out_pth.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
