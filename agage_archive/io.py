@@ -27,6 +27,7 @@ gcwerks_species = {"c2f6": "pfc-116",
                    "c6h5ch3": "toluene",
                    "c3h8": "propane",
                    "c2h6": "ethane",
+                   "c2h4": "ethene",
                    "c2h2": "ethyne",
                    "c3h6": "c-propane",
                    }
@@ -206,7 +207,6 @@ def read_nc(network, species, site, instrument,
             baseline = None,
             resample = True,
             scale = "defaults",
-            public = True,
             dropna = True):
     """Read GCWerks netCDF files
 
@@ -220,7 +220,6 @@ def read_nc(network, species, site, instrument,
         scale (str, optional): Scale to convert to. Defaults to "defaults", which will read scale_defaults file. 
             If None, will keep original scale. If you want to use a different default scale, create a new scale defaults file, 
             with the name scale_defaults-<suffix>.csv and set to "defaults-<suffix>".
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         dropna (bool, optional): Drop NaN values. Default to True.
         
@@ -289,7 +288,6 @@ def read_nc(network, species, site, instrument,
                         instruments=instruments,
                         network=network,
                         species=species,
-                        public=public,
                         extra_attributes={
                             "product_type": "mole fraction",
                             "instrument_selection": "Individual instruments",
@@ -307,8 +305,7 @@ def read_nc(network, species, site, instrument,
     rs = read_release_schedule(network, 
                             instrument,
                             species=format_species(species),
-                            site=site,
-                            public=public)
+                            site=site)
     ds = ds.sel(time=slice(None, rs))
 
     # Rename some variables, so that they can be resampled properly
@@ -352,7 +349,6 @@ def read_nc(network, species, site, instrument,
 def read_baseline(network, species, site, instrument,
                 flag_name = "git_pollution_flag",
                 verbose = False,
-                public = True,
                 dropna = True):
     """Read GCWerks netCDF files
 
@@ -382,7 +378,6 @@ def read_baseline(network, species, site, instrument,
         ds_out = read_ale_gage(network, species, site, instrument,
                            baseline = True,
                            verbose=verbose,
-                           public=public,
                            dropna=dropna)
 
     elif instrument.lower() == "gcms-magnum":
@@ -394,7 +389,6 @@ def read_baseline(network, species, site, instrument,
                                 verbose=verbose,
                                 scale = "defaults",
                                 baseline = True,
-                                public=public,
                                 resample = False,
                                 dropna = dropna)
 
@@ -403,7 +397,6 @@ def read_baseline(network, species, site, instrument,
         ds_out = read_nc(network, species, site, instrument,
                         verbose=verbose,
                         baseline = flag_name,
-                        public=public,
                         dropna=dropna)
 
     # Add attributes
@@ -438,16 +431,13 @@ def read_baseline(network, species, site, instrument,
     ds_out.attrs["product_type"] = "baseline flag"
     ds_out.attrs["instrument_selection"] = "Individual instruments"
     ds_out.attrs["frequency"] = "high-frequency"
+    ds_out.attrs["version"] = attributes_default["version"]
     if len(ds_out.time) > 0:
         ds_out.attrs["start_date"] = str(ds_out.time[0].dt.strftime("%Y-%m-%d %H:%M:%S").values)
         ds_out.attrs["end_date"] = str(ds_out.time[-1].dt.strftime("%Y-%m-%d %H:%M:%S").values)
     else:
         ds_out.attrs["start_date"] = ""
         ds_out.attrs["end_date"] = ""
-    if public:
-        ds_out.attrs["version"] = attributes_default["version"]
-    else:
-        ds_out.attrs["version"] = "NOT FOR PUBLIC RELEASE"
 
     return ds_out
 
@@ -552,7 +542,6 @@ def read_ale_gage(network, species, site, instrument,
                   data_exclude = True,
                   scale = "defaults",
                   baseline = False,
-                  public=True,
                   resample = False,
                   dropna = True):
     """Read GA Tech ALE/GAGE files, process and clean
@@ -569,14 +558,13 @@ def read_ale_gage(network, species, site, instrument,
         scale (str, optional): Calibration scale. Defaults to None, which means no conversion is attempted.
             Set to "default" to use value in scale_defaults.csv.
         baseline (bool, optional): Return baseline dataset. Defaults to False.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Not used (see run_individual_instrument). Defaults to False.
         dropna (bool, optional): Drop NaN values. Defaults to True.
 
     Returns:
         pd.DataFrame: Pandas dataframe containing file contents
     """
-    if network not in ["agage", "agage_test"]:
+    if "agage" not in network:
         raise ValueError("network must be agage or agage_test")
     
     if instrument not in ["ALE", "GAGE"]:
@@ -692,7 +680,7 @@ def read_ale_gage(network, species, site, instrument,
                         network=network,
                         species=format_species(species),
                         calibration_scale=species_info["scale"],
-                        public=public)
+                        )
 
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
@@ -709,12 +697,11 @@ def read_ale_gage(network, species, site, instrument,
             raise ValueError("Can't exclude data if time is not UTC")
         ds = read_data_exclude(ds, format_species(species), site, instrument)
 
-    # Check against release schedule if for public release. 
+    # Check against release schedule
     rs = read_release_schedule(network, 
                             instrument,
                             species=format_species(species),
-                            site=site,
-                            public=public)
+                            site=site)
     ds = ds.sel(time=slice(None, rs))
 
     # Remove all time points where mf is NaN
@@ -865,7 +852,6 @@ def read_gcms_magnum(network, species,
                   verbose = True,
                   scale = "defaults",
                   baseline = False,
-                  public = True,
                   resample = False,
                   dropna = True):
     """Read GCMS Magnum data
@@ -878,7 +864,6 @@ def read_gcms_magnum(network, species,
         verbose (bool, optional): Print verbose output. Defaults to False.
         scale (str, optional): Calibration scale. Defaults to "defaults".
         baseline (bool, optional): Return baseline dataset. Defaults to False.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Not used (see run_individual_instrument). Defaults to False.
         dropna (bool, optional): Drop NaN values. Defaults to True.
 
@@ -969,8 +954,7 @@ def read_gcms_magnum(network, species,
                                     "instrument_date": ds.time[0].dt.strftime("%Y-%m-%d").values}],
                         network=network,
                         species=format_species(species),
-                        site=site,
-                        public=public,
+                        site=False,
                         extra_attributes = extra_attrs)
 
     ds = format_variables(ds, units = species_info["units"])
@@ -978,12 +962,11 @@ def read_gcms_magnum(network, species,
     # Add pollution flag back in temporarily with dimension time
     ds["baseline"] = xr.DataArray(da_baseline.values, dims="time")
 
-    # Check against release schedule if for public release. 
+    # Check against release schedule
     rs = read_release_schedule(network, 
                             instrument,
                             species=format_species(species),
-                            site=site,
-                            public=public)
+                            site=site)
     ds = ds.sel(time=slice(None, rs))
 
     # Remove all time points where mf is NaN
@@ -1011,7 +994,6 @@ def read_gcms_magnum(network, species,
 
 def read_gcwerks_flask(network, species, site, instrument,
                        verbose = True,
-                       public = True,
                        dropna=True,
                        resample = False,
                        scale = "defaults"):
@@ -1023,7 +1005,6 @@ def read_gcwerks_flask(network, species, site, instrument,
         site (str): Site
         instrument (str): Instrument
         verbose (bool, optional): Print verbose output. Defaults to False.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         dropna (bool, optional): Drop NaN values. Default to True.
         resample (bool, optional): Dummy kwarg, needed for consistency with other functions. Default to False.
         scale (str, optional): Scale to convert to - currently only accepts "defaults", which will read scale_defaults file.
@@ -1114,7 +1095,6 @@ def read_gcwerks_flask(network, species, site, instrument,
                         network = network,
                         species = species,
                         calibration_scale = scale,
-                        public=public,
                         site = True)
     
     ds = format_variables(ds, species = species,
@@ -1135,7 +1115,6 @@ def read_gcwerks_flask(network, species, site, instrument,
 def combine_datasets(network, species, site, 
                     scale = "defaults",
                     verbose = True,
-                    public = True,
                     resample = True,
                     dropna = True):
     '''Combine ALE/GAGE/AGAGE datasets for a given species and site
@@ -1147,9 +1126,8 @@ def combine_datasets(network, species, site,
         scale (str, optional): Calibration scale. Defaults to value in scale_defaults.csv.
             If None, will attempt to leave scale unchanged.
         verbose (bool, optional): Print verbose output. Defaults to False.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
-
+        dropna (bool, optional): Drop NaN values. Defaults to True.
 
     Returns:
         xr.Dataset: Dataset containing data
@@ -1175,20 +1153,17 @@ def combine_datasets(network, species, site,
         if instrument in ["ALE", "GAGE"]:
             ds = read_ale_gage(network, species, site, instrument,
                                verbose=verbose,
-                               scale=scale,
-                               public=public)
+                               scale=scale)
         elif instrument == "GCMS-Magnum":
             ds = read_gcms_magnum(network, species, site, instrument,
                                 verbose=verbose,
                                 scale = scale,
-                                public=public,
                                 resample = False,
                                 dropna = dropna)
         else:
             ds = read_nc(network, species, site, instrument,
                         verbose=verbose,
                         scale=scale,
-                        public=public,
                         resample = resample)
 
         # Run data_exclude again, to remove any data that should be excluded for the combined dataset
@@ -1250,7 +1225,7 @@ def combine_datasets(network, species, site,
     ds_combined = ds_combined.sortby("time")
 
     # Add details on instruments to global attributes
-    ds_combined = format_attributes(ds_combined, instrument_rec, public=public,
+    ds_combined = format_attributes(ds_combined, instrument_rec,
                                     extra_attributes={"instrument_selection": instrument_selection_text})
 
     # Extend comment attribute describing all datasets
@@ -1291,7 +1266,7 @@ def combine_datasets(network, species, site,
 
 
 def combine_baseline(network, species, site,
-                     verbose = True, public = True,
+                     verbose = True,
                      dropna = True):
     '''Combine ALE/GAGE/AGAGE baseline datasets for a given species and site
 
@@ -1300,7 +1275,6 @@ def combine_baseline(network, species, site,
         species (str): Species
         site (str): Site
         verbose (bool, optional): Print verbose output. Defaults to False.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         dropna (bool, optional): Drop all time points where mf is NaN. Default to
 
     Returns:
@@ -1319,7 +1293,7 @@ def combine_baseline(network, species, site,
         ds = read_baseline(network, species, site, instrument,
                            verbose=verbose,
                            flag_name="git_pollution_flag",
-                           public=public, dropna=dropna)
+                           dropna=dropna)
 
         # Subset date
         ds = ds.sel(time=slice(*date))
@@ -1393,7 +1367,6 @@ def output_dataset(ds, network,
                    output_subpath = "",
                    extra = "",
                    version = True,
-                   public = True,
                    verbose = False,
                    network_out = ""):
     '''Output dataset to netCDF file
@@ -1407,7 +1380,6 @@ def output_dataset(ds, network,
             Used to put species in sub-directories.
         extra (str, optional): Extra string to add to filename. 
             Defaults to using the version number from global attributes.
-        public (bool, optional): Whether the dataset is for public release. Default to True.
         verbose (bool, optional): Print verbose output. Defaults to False.
         network_out (str, optional): Network to use for filename. Defaults to "".
     '''
@@ -1420,7 +1392,7 @@ def output_dataset(ds, network,
                                      format_species(ds.attrs["species"]),
                                      ds.attrs["site_code"],
                                      instrument,
-                                     extra=extra, version=version_str, public=public,
+                                     extra=extra, version=version_str,
                                      network_out=network_out)
 
     ds_out = ds.copy(deep = True)

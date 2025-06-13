@@ -328,7 +328,6 @@ def format_attributes(ds, instruments = [],
                     network = None,
                     species = None,
                     calibration_scale = None,
-                    public = True,
                     site = True,
                     extra_attributes = {}):
     '''Format attributes
@@ -343,7 +342,6 @@ def format_attributes(ds, instruments = [],
         species (str, optional): Species name. Defaults to None, in which case it is looked up in the dataset attributes.
         units (str, optional): Units. Defaults to None, in which case it is looked up in the dataset attributes.
         calibration_scale (str, optional): Calibration scale. Defaults to None, in which case it is looked up in the dataset attributes.
-        public (bool, optional): Whether the dataset is for public release. Defaults to True.
         site (bool, optional): Look for site-specific attributes.
         extra_attributes (dict, optional): Extra attributes to add to the dataset. Defaults to {}. Keys must be present in one of the attributes.json files.
 
@@ -457,9 +455,6 @@ def format_attributes(ds, instruments = [],
 
     ds_out = ds.copy(deep=True)
     ds_out.attrs = attrs.copy()
-
-    if not public:
-        ds_out.attrs["version"] = "NOT FOR PUBLIC RELEASE"
 
     return ds_out
 
