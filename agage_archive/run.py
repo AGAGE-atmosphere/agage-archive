@@ -1,5 +1,6 @@
 import pandas as pd
 import traceback
+from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_list, data_file_path, \
     copy_to_archive, delete_archive, create_empty_archive
@@ -423,7 +424,7 @@ def run_combined_instruments(network,
 
     error_log = []
 
-    for site in sites:
+    for site in tqdm(sites):
         result = run_combined_site(site, species, network, baseline, monthly, verbose, resample)
         error_log.extend(result)
 
@@ -518,6 +519,10 @@ def run_all(network,
 
     # Must run combined instruments first
     if combined:
+        print("#########################################")
+        print("#####Processing combined instruments######")
+        print("#########################################")
+
         run_combined_instruments(network,
                                 baseline=baseline, verbose=True,
                                 monthly=monthly, species=species, sites=sites,
@@ -532,8 +537,11 @@ def run_all(network,
     else:
         instruments = instrument_include
 
-    # Processing
-    for instrument in instruments:
+    print("#########################################")
+    print("#####Processing individual instruments######")
+    print("#########################################")
+
+    for instrument in tqdm(instruments):
         if instrument not in instrument_exclude:
             baseline_flag = {True: "git_pollution_flag", False: ""}[baseline]
             run_individual_instrument(network, instrument, 

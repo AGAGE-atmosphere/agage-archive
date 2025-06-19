@@ -6,6 +6,7 @@ import pandas as pd
 import re
 import xarray as xr
 from zipfile import ZipFile
+from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
@@ -281,20 +282,42 @@ def nc_to_csv(ds):
             - df: A pandas DataFrame containing the data
     """
 
+    def format_attribute_value(attr_val):
+        """Format attribute value for CSV header."""
+        if isinstance(attr_val, list):
+            return '; '.join(map(str, attr_val))
+        attr_val = str(attr_val)
+        attr_val = attr_val.replace('"', '""')
+        # Replace all commas with semicolons to avoid CSV issues
+        attr_val = attr_val.replace(',', ';')
+        # Replace all newlines with slashes to avoid CSV issues
+        attr_val = attr_val.replace('\n', '/')
+        # Replace all tabs with spaces to avoid CSV issues
+        attr_val = attr_val.replace('\t', '    ')
+        return attr_val
+
     # Prepare header from attributes
-    header = ["# GLOBAL ATTRIBUTES:", "# ------------------------------"]
+    header = [f"# {ds.network.upper()} {ds.site_code.upper()} {ds.instrument} {ds.species} converted from netCDF to CSV",
+              "# This file has generated automatically. Metadata have been modified for consistency CSV format compromising the readability of some attributes.",
+              "#",
+              "# GLOBAL ATTRIBUTES:",
+              "# ------------------------------"]
+
     for attr, attr_val in sorted(ds.attrs.items()):
-        header_line = f"# {attr}: {str(attr_val)}"
+        header_line = f"# {attr}: {format_attribute_value(attr_val)}"
         header.append(header_line)
+    header.append("#")
 
     # For each variable, add its attributes to the header
     header.append("# VARIABLE ATTRIBUTES:")
+    header.append("# ------------------------------")
     for var_name, var in ds.data_vars.items():
         header.append(f"# {var_name}:")
         for attr, attr_val in var.attrs.items():
-            header_line = f"#   {attr}: {str(attr_val)}"
+            header_line = f"#   {attr}: {format_attribute_value(attr_val)}"
             header.append(header_line)
-        header.append("# ------------------------------")
+    header.append("#")
+
     header.append("# DATA:")
     # Convert to DataFrame
     df = ds.to_dataframe().reset_index()
@@ -375,7 +398,9 @@ def archive_to_csv(network):
                                         paths.output_path,
                                         errors="ignore_inputs")
 
-    for f in files:
+    print(f"Converting {len(files)} files to CSV format...")
+
+    for f in tqdm(files):
         if not f.endswith(".nc"):
             # Copy the file as is
             archive_write_csv(csv_archive_path, f,
