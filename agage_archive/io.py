@@ -15,7 +15,7 @@ from agage_archive.data_selection import read_release_schedule, read_data_exclud
     read_data_combination, calibration_scale_default
 from agage_archive.definitions import instrument_type_definition, get_instrument_type, \
     get_instrument_number, instrument_selection_text
-from agage_archive.util import tz_local_to_utc, parse_fortran_format
+from agage_archive.util import tz_local_to_utc, parse_fortran_format, nc_to_csv
 
 
 gcwerks_species = {"c2f6": "pfc-116",
