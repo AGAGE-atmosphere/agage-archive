@@ -437,6 +437,8 @@ def output_path(network,
     if extra_archive:
         archive_path = archive_suffix(paths.output_path,
                                       extra_archive)
+    else:
+        archive_path = paths.output_path
 
     # Can tweak data_file_path to get the output path
     output_path = data_file_path("", network = network,

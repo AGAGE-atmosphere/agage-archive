@@ -94,7 +94,7 @@ def test_data_file_list():
     # Test that we can list files in a folder
     network, sub_path, files = data_file_list("agage_test", "path_test_files")
     assert network == "agage_test"
-    assert sub_path == "path_test_files/"
+    assert sub_path == "path_test_files"
     assert "test.txt" in files
 
     # Test that we can list files in a zip archive

@@ -5,9 +5,11 @@ import yaml
 import pandas as pd
 import re
 import xarray as xr
+from zipfile import ZipFile
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
-    data_file_list, archive_suffix, delete_archive, create_empty_archive
+    data_file_list, delete_archive, create_empty_archive, \
+    output_path
 
 
 def is_number(s):
@@ -319,6 +321,35 @@ def nc_to_csv(ds):
     return header, df
 
 
+def archive_write_csv(archive_path, filename, data):
+    """Write data to a CSV file in an archive or directory.
+    Args:
+        archive_path (Path): Path to the archive or directory
+        filename (str): Name of the file to write
+        data (str): Data to write to the file
+    Returns:
+        None: Writes the data to the specified file in the archive or directory
+    """
+
+    # Ensure the archive_path is a Path object
+    if isinstance(archive_path, str):
+        archive_path = Path(archive_path)
+
+    if archive_path.suffix == ".zip":
+        with ZipFile(archive_path, mode="a") as zip:
+            # prepend the archive name to the output filename so that it unzips to a folder
+            output_filename = archive_path.name.split(".zip")[0] + "/" + filename
+            zip.writestr(output_filename, data)
+    else:
+        #Test if target directory exists and if not create it
+        file_parent = (archive_path / filename).parent
+        if not (file_parent).exists():
+            (file_parent).mkdir(parents=True, exist_ok=True)
+
+        with open(archive_path / filename, mode="w") as f:
+            f.write(data)
+
+
 def archive_to_csv(network):
     """Convert AGAGE archive data files to CSV format.
     Args:
@@ -335,30 +366,31 @@ def archive_to_csv(network):
     delete_archive(network,
                    archive_suffix_string = archive_suffix_str)
     create_empty_archive(network, archive_suffix_string = archive_suffix_str)
-
+    csv_archive_path, _ = output_path(network, "_", "_", "_",
+                            errors="ignore",
+                            extra_archive=archive_suffix_str)
+    
     # Get the file list for the nc archive
     _, nc_sub_path, files = data_file_list(network,
                                         paths.output_path,
                                         errors="ignore_inputs")
 
     for f in files:
-        filename_csv = f"{f.split('.nc')[0]}.csv"
+        if not f.endswith(".nc"):
+            # Copy the file as is
+            archive_write_csv(csv_archive_path, f,
+                            data_file_path(f, network).read_text())
 
-        with open_data_file(f, network, sub_path = nc_sub_path) as ncf:
-            with xr.open_dataset(ncf) as nc_ds:
-                ds = nc_ds.load()
-        
-        # Convert to CSV
-        header, df = nc_to_csv(ds)
+        else:
+            filename_csv = f"{f.split('.nc')[0]}.csv"
 
-        # Write to CSV file
-        with open_data_file(filename_csv, network, 
-                            sub_path = archive_suffix(paths.output_path, archive_suffix_str),
-                            mode = "w") as csv_file:
-            for line in header:
-                csv_file.write(line + "\n")
-            df.to_csv(csv_file, index=False, float_format='%.6f')
+            with open_data_file(f, network, sub_path = nc_sub_path) as ncf:
+                with xr.open_dataset(ncf) as nc_ds:
+                    ds = nc_ds.load()
+            
+            # Convert to CSV
+            header, df = nc_to_csv(ds)
+            output_data = "\n".join(header) + "\n" + df.to_csv(index=False)
 
-        pass
-
+            archive_write_csv(csv_archive_path, filename_csv, output_data)
 

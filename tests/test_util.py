@@ -1,8 +1,12 @@
 import pandas as pd
 import xarray as xr
 from pathlib import Path
+from zipfile import ZipFile
+import tempfile
+import os
+from pathlib import Path
 
-from agage_archive.util import parse_fortran_format, nc_to_csv
+from agage_archive.util import parse_fortran_format, nc_to_csv, archive_write_csv
 
 
 def test_parse_fortran_format():
@@ -89,3 +93,51 @@ def test_nc_to_csv():
     assert df["minute"].tolist() == [0, 0, 0, 0, 0], "Minute column does not have the expected data."
     assert df["second"].tolist() == [0, 0, 0, 0, 0], "Second column does not have the expected data."
 
+
+def test_archive_write_csv():
+    """Test the archive_write_csv function."""
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tmpdir = os.path.abspath(tmpdirname)
+        
+        zip_path = Path(tmpdir) / "test_archive.zip"
+        non_zip_path = Path(tmpdir) / "test_archive"
+
+        filename = "test_output.csv"
+        filename_with_subpath = "subfolder/test_output.csv"
+        
+        data = "col1,col2\n1,2\n3,4"
+
+        archive_write_csv(zip_path, filename, data)
+        archive_write_csv(zip_path, filename_with_subpath, data)
+
+        # Check if the file was created
+        with ZipFile(zip_path, mode="r") as zip:
+
+            # output_write_csv prepends the archive name to the output filename
+            zip_stem = zip_path.stem
+            filename_in_zip = f"{zip_stem}/{filename}"
+            filename_with_subpath_in_zip = f"{zip_stem}/{filename_with_subpath}"
+
+            # Check if the file exists in the zip
+            assert filename_in_zip in zip.namelist(), f"{filename_in_zip} not found in zip"
+            assert filename_with_subpath_in_zip in zip.namelist(), f"{filename_with_subpath_in_zip} not found in zip"
+            with zip.open(filename_in_zip) as f:
+                content = f.read().decode("utf-8")
+                assert content == data, f"Content of {filename_in_zip} does not match expected data"
+            with zip.open(filename_with_subpath_in_zip) as f:
+                content = f.read().decode("utf-8")
+                assert content == data, f"Content of {filename_with_subpath_in_zip} does not match expected data"
+        
+        archive_write_csv(non_zip_path, filename, data)
+        archive_write_csv(non_zip_path, filename_with_subpath, data)
+
+        # Check if the file was created
+        assert (non_zip_path / filename).exists(), f"{non_zip_path / filename} does not exist"
+        with open(non_zip_path / filename, mode="r") as f:
+            content = f.read()
+            assert content == data, f"Content of {non_zip_path / filename} does not match expected data"
+        assert (non_zip_path / filename_with_subpath).exists(), f"{non_zip_path / filename_with_subpath} does not exist"
+        with open(non_zip_path / filename_with_subpath, mode="r") as f:
+            content = f.read()
+            assert content == data, f"Content of {non_zip_path / filename_with_subpath} does not match expected data"
