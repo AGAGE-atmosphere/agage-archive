@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2] - XXXX-XX-XX
 
+### Added
+
+- Functionality to convert an archive of netCDF files to csv files (util.archive_to_csv)
+
 ### Removed
 
 - No longer accepts public or private outputs. These should be specified in separate "parent" repositories

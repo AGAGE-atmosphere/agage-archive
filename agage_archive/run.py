@@ -1,13 +1,9 @@
 import pandas as pd
-from shutil import rmtree
-from zipfile import ZipFile
-import time
 import traceback
-import os
-import xarray as xr
+from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_list, data_file_path, \
-    copy_to_archive, output_path
+    copy_to_archive, delete_archive, create_empty_archive
 from agage_archive.data_selection import read_release_schedule, read_data_combination, choose_scale_defaults_file
 from agage_archive.io import combine_datasets, combine_baseline, \
     read_nc, read_baseline, read_ale_gage, read_gcwerks_flask, read_gcms_magnum, \
@@ -37,65 +33,6 @@ def get_error(e):
 
     error_type = type(e).__name__
     return f"{error_type} in stack: {' / '.join(stack_files_and_lines)}. {str(e)}"
-
-
-def delete_archive(network):
-    """Delete all files in output directory before running
-
-    Args:
-        network (str): Network for output filenames
-    """
-
-    path = Paths(network, errors="ignore")
-
-    try:
-        out_pth, _ = output_path(network, "_", "_", "_",
-                                errors="ignore_inputs")
-    except FileNotFoundError:
-        print(f"Output directory or archive for does not exist, continuing")
-        return
-
-    # Find all files in output directory
-    _, _, files = data_file_list(network=network,
-                                sub_path=path.output_path,
-                                errors="ignore")
-
-    print(f'Deleting all files in {out_pth}')
-
-    # If out_pth is a zip file, delete it
-    if out_pth.suffix == ".zip" and out_pth.exists():
-        out_pth.unlink()
-    else:
-        # For safety that out_pth is in data/network directory
-        if out_pth.parents[1] == path.data and out_pth.parents[0].name == network:
-            pass
-        else:
-            raise ValueError(f"{out_pth} must be in a data/network directory")
-
-        # Delete all files in output directory
-        for f in files:
-            pth = out_pth / f
-            if pth.is_file():
-                pth.unlink()
-            elif pth.is_dir():
-                rmtree(pth)
-
-
-def create_empty_archive(network):
-    """Create an empty output zip file or folders
-
-    Args:
-        network (str): Network for output filenames
-    """
-
-    out_pth, _ = output_path(network, "_", "_", "_",
-                            errors="ignore")
-
-    if out_pth.suffix == ".zip" and not out_pth.exists():
-        with ZipFile(out_pth, "w") as f:
-            pass
-    elif out_pth.is_dir():
-        out_pth.mkdir(parents=True, exist_ok=True)
 
 
 def run_timestamp_checks(ds,
@@ -487,7 +424,7 @@ def run_combined_instruments(network,
 
     error_log = []
 
-    for site in sites:
+    for site in tqdm(sites):
         result = run_combined_site(site, species, network, baseline, monthly, verbose, resample)
         error_log.extend(result)
 
@@ -582,6 +519,10 @@ def run_all(network,
 
     # Must run combined instruments first
     if combined:
+        print("#########################################")
+        print("#####Processing combined instruments######")
+        print("#########################################")
+
         run_combined_instruments(network,
                                 baseline=baseline, verbose=True,
                                 monthly=monthly, species=species, sites=sites,
@@ -596,8 +537,11 @@ def run_all(network,
     else:
         instruments = instrument_include
 
-    # Processing
-    for instrument in instruments:
+    print("#########################################")
+    print("#####Processing individual instruments######")
+    print("#########################################")
+
+    for instrument in tqdm(instruments):
         if instrument not in instrument_exclude:
             baseline_flag = {True: "git_pollution_flag", False: ""}[baseline]
             run_individual_instrument(network, instrument, 
