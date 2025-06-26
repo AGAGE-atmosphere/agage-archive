@@ -167,7 +167,7 @@ def read_nc_path(network, species, site, instrument):
 
     gcmd_instruments = ["GCMD", "GCECD", "GCPDD"]
     optical_instruments = ["Picarro", "LGR"]
-    gcms_instruments = ["GCMS-ADS", "GCMS-Medusa", "GCMS-MteCimone", "GCTOFMS"]
+    gcms_instruments = ["GCMS-ADS", "GCMS-Medusa", "GCMS-MteCimone", "GCTOFMS", "GCMS"]
 
     # Determine sub-path within data directory
     sub_path = None
