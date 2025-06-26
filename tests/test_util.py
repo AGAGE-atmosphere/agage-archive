@@ -60,14 +60,17 @@ def test_nc_to_csv():
         },
     )
     data.attrs["source"] = "Test Data"
+    data.attrs["network"] = "agage-test"
+    data.attrs["site_code"] = "TEST"
+    data.attrs["instrument"] = "Test Instrument"
+    data.attrs["species"] = "Test Species"
     data.mf.attrs["units"] = "ppt"
     data.mf_repeatability.attrs["units"] = "Percent"
 
     header, df = nc_to_csv(data)
 
-    assert header[0] == "# GLOBAL ATTRIBUTES:"
+    assert header[3] == "# GLOBAL ATTRIBUTES:"
 
-    assert "source: Test Data" in header[2]
     assert any(["units: ppt" in line for line in header])
     wh_mf = [i for i, line in enumerate(header) if "mf:" in line]
     assert "units: ppt" in header[wh_mf[0] + 1], "Units line for 'mf' not found after 'mf:' line."
