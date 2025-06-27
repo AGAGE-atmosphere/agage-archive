@@ -121,9 +121,9 @@ def define_agg_dict(variable_defaults, resample_period, columns,
         """
         offset = pd.tseries.frequencies.to_offset(resample_period)
         # If the offset has a fixed timedelta, use it directly
-        if hasattr(offset, "delta"):
-            return offset.delta.total_seconds()
-        else:
+        try:
+            return pd.Timedelta(offset).total_seconds()
+        except:
             # Otherwise, estimate by using a reference time difference (choose a 30-day month)
             ref = pd.Timestamp("2021-06-01")
             return (ref + offset - ref).total_seconds()
@@ -201,7 +201,7 @@ def resampler(df, variable_defaults, last_timestamp, resample_period="3600s"):
     # If there are any Nans in the instrument_type column, replace with -1 (UNDEFINED)
     if "instrument_type" in df.columns:
         if df_resample["instrument_type"].isnull().any():
-            df_resample["instrument_type"].fillna(-1, inplace=True)
+            df_resample["instrument_type"] = df_resample["instrument_type"].fillna(-1)
 
     # Change the final period to the number of seconds between the last time point and the end of the slice
     df_resample.at[df_resample.index[-1], "sampling_period"] = int((last_timestamp - df_resample.index[-1]).total_seconds())
@@ -318,13 +318,13 @@ def grouper(df, inlet_height_change_indices,
         # If there are any nans in int columns, replace with -999
         for col in dfs[i].select_dtypes(include=["int8", "int16", "int32", "int64"]).columns:
             if dfs[i][col].isnull().any():
-                dfs[i][col].fillna(-999, inplace=True)
+                dfs[i][col] = dfs[i][col].fillna(-999)
 
         # If there are any nans in columns that are going to be converted to int, replace with -999
         for col in dtypes.index:
             if "int" in str(dtypes[col]):
                 if dfs[i][col].isnull().any():
-                    dfs[i][col].fillna(-999, inplace=True)
+                    dfs[i][col] = dfs[i][col].fillna(-999)
 
         # Convert dtypes
         dfs[i] = dfs[i].astype(dtypes)
@@ -335,7 +335,7 @@ def grouper(df, inlet_height_change_indices,
     # If there are any Nans in the instrument_type column, replace with -1 (UNDEFINED)
     if "instrument_type" in df.columns:
         if df_avg["instrument_type"].isnull().any():
-            df_avg["instrument_type"].fillna(-1, inplace=True)
+            df_avg["instrument_type"] = df_avg["instrument_type"].fillna(-1)
 
     return df_avg
 
