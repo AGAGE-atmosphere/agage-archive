@@ -1249,15 +1249,9 @@ def combine_datasets(network, species, site,
         ds_combined = ds_combined.dropna(dim="time", subset = ["mf"])
 
     # Summarise instrument types in attributes
-    # and remove instrument_type variable if all the same
     instrument_numbers = list(np.unique(ds_combined.instrument_type.values))
-    if len(instrument_numbers) == 1:
-        instrument_name = get_instrument_type(instrument_numbers[0])
-        ds_combined.attrs["instrument_type"] = instrument_name
-        ds_combined = ds_combined.drop_vars("instrument_type")
-    else:
-        instrument_name = get_instrument_type(instrument_numbers)
-        ds_combined.attrs["instrument_type"] = "/".join(instrument_name)
+    instrument_name = get_instrument_type(instrument_numbers)
+    ds_combined.attrs["instrument_type"] = "/".join(instrument_name)
 
     # Update network attribute
     ds_combined.attrs["network"] = "/".join(set(networks))
