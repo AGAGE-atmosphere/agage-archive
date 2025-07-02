@@ -354,7 +354,7 @@ def open_data_file(filename,
                    verbose = False,
                    this_repo = False,
                    errors = "ignore",
-                   site = ""
+                   site = "",
                    mode = "r"):
     """Open data file. Structure is data/network/sub_path
     sub_path can be a zip archive
