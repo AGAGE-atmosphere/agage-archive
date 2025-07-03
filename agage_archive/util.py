@@ -5,8 +5,10 @@ import yaml
 import pandas as pd
 import re
 import xarray as xr
+from pathlib import Path
 from zipfile import ZipFile
 from tqdm import tqdm
+import unicodedata
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
@@ -124,7 +126,7 @@ def excel_to_csv(file, network):
         
         csv_filename = csv_folder_name / f"{file}_{sheet}.csv"
 
-        with open(csv_filename, "w") as f:
+        with open(csv_filename, "w", encoding="utf-8") as f:
             for h in header:
                 f.writelines(h + "\n")
             xlsx_data.to_csv(f, index = None)
@@ -286,7 +288,10 @@ def nc_to_csv(ds):
         """Format attribute value for CSV header."""
         if isinstance(attr_val, list):
             return '; '.join(map(str, attr_val))
-        attr_val = str(attr_val)
+        if not isinstance(attr_val, str):
+            attr_val = str(attr_val)
+        
+        # Handle CSV special characters
         attr_val = attr_val.replace('"', '""')
         # Replace all commas with semicolons to avoid CSV issues
         attr_val = attr_val.replace(',', ';')
@@ -298,7 +303,7 @@ def nc_to_csv(ds):
 
     # Prepare header from attributes
     header = [f"# {ds.network.upper()} {ds.site_code.upper()} {ds.instrument} {ds.species} converted from netCDF to CSV",
-              "# This file has generated automatically. Metadata have been modified for consistency CSV format compromising the readability of some attributes.",
+              "# This file has generated automatically. Metadata have been modified for consistency with csv format compromising the readability of some attributes.",
               "#",
               "# GLOBAL ATTRIBUTES:",
               "# ------------------------------"]
@@ -358,18 +363,24 @@ def archive_write_csv(archive_path, filename, data):
     if isinstance(archive_path, str):
         archive_path = Path(archive_path)
 
+    # Normalize Unicode characters to handle special characters properly
+    if isinstance(data, str):
+        data = unicodedata.normalize('NFC', data)
+
     if archive_path.suffix == ".zip":
         with ZipFile(archive_path, mode="a") as zip:
             # prepend the archive name to the output filename so that it unzips to a folder
             output_filename = archive_path.name.split(".zip")[0] + "/" + filename
-            zip.writestr(output_filename, data)
+            # Explicitly encode as UTF-8 to prevent character encoding issues
+            # Use 'utf-8-sig' to add BOM for better compatibility with some programs
+            zip.writestr(output_filename, data.encode('utf-8-sig'))
     else:
         #Test if target directory exists and if not create it
         file_parent = (archive_path / filename).parent
         if not (file_parent).exists():
             (file_parent).mkdir(parents=True, exist_ok=True)
 
-        with open(archive_path / filename, mode="w") as f:
+        with open(archive_path / filename, mode="w", encoding="utf-8-sig") as f:
             f.write(data)
 
 
@@ -404,7 +415,7 @@ def archive_to_csv(network):
         if not f.endswith(".nc"):
             # Copy the file as is
             archive_write_csv(csv_archive_path, f,
-                            data_file_path(f, network).read_text())
+                            data_file_path(f, network).read_text(encoding='utf-8'))
 
         else:
             filename_csv = f"{f.split('.nc')[0]}.csv"
