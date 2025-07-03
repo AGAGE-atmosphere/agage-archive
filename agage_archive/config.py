@@ -354,7 +354,8 @@ def open_data_file(filename,
                    verbose = False,
                    this_repo = False,
                    errors = "ignore",
-                   site = ""):
+                   site = "",
+                   mode = "r"):
     """Open data file. Structure is data/network/sub_path
     sub_path can be a zip archive
 
@@ -365,6 +366,8 @@ def open_data_file(filename,
         verbose (bool, optional): Print verbose output. Defaults to False.
         this_repo (bool, optional): If True, look for the root and data folder within this repository (no config).
             If False, will look for the root and data folders and config file in the working directory.
+        mode (str, optional): Mode to open file. Defaults to "r", which is interpreted as "rb". 
+            Other options are "w" and "a" for writing and appending respectively.
 
     Raises:
         FileNotFoundError: Can't find file
@@ -383,12 +386,12 @@ def open_data_file(filename,
         print(f"... opening {pth / filename}")
 
     if pth.suffix == ".zip":
-        with ZipFile(pth, "r") as z:
+        with ZipFile(pth, mode) as z:
             return z.open(filter(z.namelist(), filename)[0])
     elif "tar.gz" in filename:
-        return tarfile.open(pth / filename, "r:gz")
+        return tarfile.open(pth / filename, f"{mode}:gz")
     else:
-        return (pth / filename).open("rb")
+        return (pth / filename).open(f"{mode}b")
 
 
 def output_path(network,
