@@ -135,7 +135,7 @@ def define_instrument_type(ds, instrument):
     instrument_number, instrument_type_str = instrument_type_definition()
 
     ds["instrument_type"].attrs = {
-        "long_name": "ALE/GAGE/AGAGE instrument type",
+        "long_name": "Instrument type",
         "comment": instrument_type_str,
         }
 
@@ -1230,7 +1230,7 @@ def combine_datasets(network, species, site,
 
     # Extend comment attribute describing all datasets
     if len(comments) > 1:
-        comment_str = "Combined AGAGE/GAGE/ALE dataset from the following individual sources:\n"
+        comment_str = "Combined dataset from the following individual sources:\n"
         for i, comment in enumerate(comments):
             comment_str += f"{i}) {comment}\n"
     else:
