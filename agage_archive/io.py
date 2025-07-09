@@ -135,7 +135,7 @@ def define_instrument_type(ds, instrument):
     instrument_number, instrument_type_str = instrument_type_definition()
 
     ds["instrument_type"].attrs = {
-        "long_name": "ALE/GAGE/AGAGE instrument type",
+        "long_name": "Instrument type",
         "comment": instrument_type_str,
         }
 
@@ -216,7 +216,7 @@ def read_nc(network, species, site, instrument,
         site (str): Site code
         instrument (str): Instrument
         verbose (bool, optional): Print verbose output. Defaults to False.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         scale (str, optional): Scale to convert to. Defaults to "defaults", which will read scale_defaults file. 
             If None, will keep original scale. If you want to use a different default scale, create a new scale defaults file, 
             with the name scale_defaults-<suffix>.csv and set to "defaults-<suffix>".
@@ -302,7 +302,7 @@ def read_nc(network, species, site, instrument,
         ds = read_data_exclude(ds, format_species(species), site, instrument)
 
     # Check against release schedule and remove any data after end date
-    rs = read_release_schedule(network, 
+    rs = read_release_schedule(network,
                             instrument,
                             species=format_species(species),
                             site=site)
@@ -553,7 +553,7 @@ def read_ale_gage(network, species, site, instrument,
         instrument (str): "ALE" or "GAGE"
         verbose (bool, optional): Print verbose output. Defaults to False.
         utc (bool, optional): Convert to UTC. Defaults to True.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True. 
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True. 
             utc must also be true, as timestamps are in UTC.
         scale (str, optional): Calibration scale. Defaults to None, which means no conversion is attempted.
             Set to "default" to use value in scale_defaults.csv.
@@ -698,7 +698,7 @@ def read_ale_gage(network, species, site, instrument,
         ds = read_data_exclude(ds, format_species(species), site, instrument)
 
     # Check against release schedule
-    rs = read_release_schedule(network, 
+    rs = read_release_schedule(network,
                             instrument,
                             species=format_species(species),
                             site=site)
@@ -850,6 +850,7 @@ def read_gcms_magnum(network, species,
                   site = "MHD",
                   instrument = "GCMS-Magnum",
                   verbose = True,
+                  data_exclude = True,
                   scale = "defaults",
                   baseline = False,
                   resample = False,
@@ -862,6 +863,7 @@ def read_gcms_magnum(network, species,
         site (str, optional): Site. Defaults to "MHD".
         instrument (str, optional): Instrument. Defaults to "GCMS-Magnum".
         verbose (bool, optional): Print verbose output. Defaults to False.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         scale (str, optional): Calibration scale. Defaults to "defaults".
         baseline (bool, optional): Return baseline dataset. Defaults to False.
         resample (bool, optional): Not used (see run_individual_instrument). Defaults to False.
@@ -962,8 +964,12 @@ def read_gcms_magnum(network, species,
     # Add pollution flag back in temporarily with dimension time
     ds["baseline"] = xr.DataArray(da_baseline.values, dims="time")
 
+    # Remove any excluded data
+    if data_exclude:
+        ds = read_data_exclude(ds, format_species(species), site, instrument)
+
     # Check against release schedule
-    rs = read_release_schedule(network, 
+    rs = read_release_schedule(network,
                             instrument,
                             species=format_species(species),
                             site=site)
@@ -994,6 +1000,7 @@ def read_gcms_magnum(network, species,
 
 def read_gcwerks_flask(network, species, site, instrument,
                        verbose = True,
+                       data_exclude = True,
                        dropna=True,
                        resample = False,
                        scale = "defaults"):
@@ -1005,6 +1012,7 @@ def read_gcwerks_flask(network, species, site, instrument,
         site (str): Site
         instrument (str): Instrument
         verbose (bool, optional): Print verbose output. Defaults to False.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         dropna (bool, optional): Drop NaN values. Default to True.
         resample (bool, optional): Dummy kwarg, needed for consistency with other functions. Default to False.
         scale (str, optional): Scale to convert to - currently only accepts "defaults", which will read scale_defaults file.
@@ -1104,6 +1112,17 @@ def read_gcwerks_flask(network, species, site, instrument,
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
     ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+
+    # Remove any excluded data
+    if data_exclude:
+        ds = read_data_exclude(ds, format_species(species), site, instrument)
+
+    # Check against release schedule
+    rs = read_release_schedule(network,
+                            instrument,
+                            species=format_species(species),
+                            site=site)
+    ds = ds.sel(time=slice(None, rs))
 
     # Remove all time points where mf is NaN
     if dropna:
@@ -1230,7 +1249,7 @@ def combine_datasets(network, species, site,
 
     # Extend comment attribute describing all datasets
     if len(comments) > 1:
-        comment_str = "Combined AGAGE/GAGE/ALE dataset from the following individual sources:\n"
+        comment_str = "Combined dataset from the following individual sources:\n"
         for i, comment in enumerate(comments):
             comment_str += f"{i}) {comment}\n"
     else:

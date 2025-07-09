@@ -91,7 +91,6 @@ def read_release_schedule(network, instrument,
     Returns:
         pd.DataFrame: Release schedule
     '''
-
     # Read csv file
     with open_data_file(f"data_release_schedule_{instrument}.csv",
                         network = network, sub_path = "data_release_schedule") as f:
