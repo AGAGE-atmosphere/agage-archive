@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - AGAGE data specification is now removed. These files should be put in a different repository that calls the functions in this package. See https://github.com/AGAGE-atmosphere/agage-archive-template
 - All files now contain almost the same variables (e.g., instrument_type, even if there is only one instrument)
+- A release schedule is required for all instruments now. Previously missing from GCMS-Magnum and GCMS-Medusa-flask instruments.
 
 ### Fixed
 
