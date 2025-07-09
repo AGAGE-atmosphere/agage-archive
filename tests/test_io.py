@@ -420,6 +420,6 @@ def test_define_instrument_type():
 
     instrument_number, instrument_type_str = instrument_type_definition()
 
-    assert ds["instrument_type"].attrs["long_name"] == "ALE/GAGE/AGAGE instrument type"
+    assert ds["instrument_type"].attrs["long_name"] == "Instrument type"
     assert ds["instrument_type"].attrs["comment"] == instrument_type_str
     assert ds["instrument_type"].values[0] == get_instrument_number(instrument)
