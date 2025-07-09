@@ -216,7 +216,7 @@ def read_nc(network, species, site, instrument,
         site (str): Site code
         instrument (str): Instrument
         verbose (bool, optional): Print verbose output. Defaults to False.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         scale (str, optional): Scale to convert to. Defaults to "defaults", which will read scale_defaults file. 
             If None, will keep original scale. If you want to use a different default scale, create a new scale defaults file, 
             with the name scale_defaults-<suffix>.csv and set to "defaults-<suffix>".
@@ -553,7 +553,7 @@ def read_ale_gage(network, species, site, instrument,
         instrument (str): "ALE" or "GAGE"
         verbose (bool, optional): Print verbose output. Defaults to False.
         utc (bool, optional): Convert to UTC. Defaults to True.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True. 
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True. 
             utc must also be true, as timestamps are in UTC.
         scale (str, optional): Calibration scale. Defaults to None, which means no conversion is attempted.
             Set to "default" to use value in scale_defaults.csv.
@@ -863,7 +863,7 @@ def read_gcms_magnum(network, species,
         site (str, optional): Site. Defaults to "MHD".
         instrument (str, optional): Instrument. Defaults to "GCMS-Magnum".
         verbose (bool, optional): Print verbose output. Defaults to False.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         scale (str, optional): Calibration scale. Defaults to "defaults".
         baseline (bool, optional): Return baseline dataset. Defaults to False.
         resample (bool, optional): Not used (see run_individual_instrument). Defaults to False.
@@ -1012,7 +1012,7 @@ def read_gcwerks_flask(network, species, site, instrument,
         site (str): Site
         instrument (str): Instrument
         verbose (bool, optional): Print verbose output. Defaults to False.
-        data_exclude (bool, optional): Exclude data based on data_exclude.xlsx. Defaults to True.
+        data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         dropna (bool, optional): Drop NaN values. Default to True.
         resample (bool, optional): Dummy kwarg, needed for consistency with other functions. Default to False.
         scale (str, optional): Scale to convert to - currently only accepts "defaults", which will read scale_defaults file.
