@@ -416,10 +416,12 @@ def test_define_instrument_type():
 
     instrument = "ALE"
 
+    ds.attrs["network"] = "agage_test"
+
     ds = define_instrument_type(ds, instrument)
 
-    instrument_number, instrument_type_str = instrument_type_definition()
+    instrument_number, instrument_type_str = instrument_type_definition(ds.attrs["network"])
 
     assert ds["instrument_type"].attrs["long_name"] == "Instrument type"
     assert ds["instrument_type"].attrs["comment"] == instrument_type_str
-    assert ds["instrument_type"].values[0] == get_instrument_number(instrument)
+    assert ds["instrument_type"].values[0] == get_instrument_number(instrument, ds.attrs["network"])

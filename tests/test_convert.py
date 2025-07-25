@@ -374,6 +374,7 @@ def test_monthly_baseline():
     ds.attrs["version"] = "test"
     ds.attrs["species"] = "ch4"
     ds.attrs["calibration_scale"] = "TU-87"
+    ds.attrs["network"] = "agage_test"
 
     # Create a sample baseline dataset
     baseline_data = {"baseline": (["time"], np.random.choice([0, 1], size=len(time)))}

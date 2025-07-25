@@ -203,6 +203,8 @@ def format_variables(ds,
 
     '''
 
+    network = ds.attrs["network"]
+
     with open_data_file("variables.json", this_repo=True) as f:
         variables = json.load(f)
     
@@ -310,7 +312,7 @@ def format_variables(ds,
 
     # If instrument_type variable is in file, make sure comment is formatted properly
     if "instrument_type" in ds.variables:
-        instrument_number, instrument_number_string = instrument_type_definition()
+        instrument_number, instrument_number_string = instrument_type_definition(network)
         ds.instrument_type.attrs["comment"] = instrument_number_string
 
     # If there are any attribute overrides, apply them
@@ -358,6 +360,7 @@ def format_attributes(ds, instruments = [],
         else:
             raise ValueError("No network specified and none found in dataset attributes. Specify in function call.")
     else:
+        ds.attrs["network"] = network
         network_attrs = network
 
     with open_data_file("attributes.json", network=network_attrs) as f:

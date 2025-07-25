@@ -7,8 +7,6 @@ colours = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#C
 colour_counter = 0
 colour_max = len(colours)
 
-instrument_number, instrument_number_string = instrument_type_definition()
-
 variables = {"mf": "(UNIT)",
             "mf_repeatability": "repeatability (UNIT)",
             "mf_variability": "variability (UNIT)",
@@ -90,6 +88,8 @@ def plot_combined(ds, fig, variable="mf", mode="lines"):
     """
 
     global colour_counter
+
+    instrument_number, instrument_number_string = instrument_type_definition(ds.network)
 
     # Get unique instrument types
     instrument_types = set(ds.instrument_type.values)

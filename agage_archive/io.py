@@ -129,10 +129,10 @@ def define_instrument_type(ds, instrument):
     """
 
     # Add instrument_type to dataset as variable
-    instrument_type = get_instrument_number(instrument)
+    instrument_type = get_instrument_number(instrument, ds.attrs["network"])
     ds["instrument_type"] = xr.DataArray(np.repeat(instrument_type, len(ds.time)),
                                     dims="time", coords={"time": ds.time})
-    instrument_number, instrument_type_str = instrument_type_definition()
+    instrument_number, instrument_type_str = instrument_type_definition(ds.attrs["network"])
 
     ds["instrument_type"].attrs = {
         "long_name": "Instrument type",
@@ -295,7 +295,7 @@ def read_nc(network, species, site, instrument,
 
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     # Remove any excluded data
     if data_exclude:
@@ -426,7 +426,7 @@ def read_baseline(network, species, site, instrument,
     ds_out.attrs["site_code"] = site.upper()
     ds_out.attrs["species"] = format_species(species)
     ds_out.attrs["instrument"] = instrument
-    ds_out.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds_out.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
     ds_out.attrs["network"] = network
     ds_out.attrs["product_type"] = "baseline flag"
     ds_out.attrs["instrument_selection"] = "Individual instruments"
@@ -672,9 +672,6 @@ def read_ale_gage(network, species, site, instrument,
         ds.attrs["instrument_comment"] = "NOTE: Some data points may have been removed from the original dataset " + \
             "because they were not felt to be representative of the baseline air masses (Paul Fraser, pers. comm.). "
 
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
-
     ds = format_attributes(ds,
                         instruments=[{"instrument": f"{instrument.upper()}_GCMD"}],
                         network=network,
@@ -682,9 +679,12 @@ def read_ale_gage(network, species, site, instrument,
                         calibration_scale=species_info["scale"],
                         )
 
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
+
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     ds = format_variables(ds, units=species_info["units"])
 
@@ -943,11 +943,8 @@ def read_gcms_magnum(network, species,
     extra_attrs["product_type"] = "mole fraction"
     extra_attrs["instrument_selection"] = "Individual instruments"
     extra_attrs["frequency"] = "high-frequency"
-    extra_attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    extra_attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
     extra_attrs["site_code"] = site
-
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
 
     # Add attributes
     ds = format_attributes(ds,
@@ -958,6 +955,9 @@ def read_gcms_magnum(network, species,
                         species=format_species(species),
                         site=False,
                         extra_attributes = extra_attrs)
+
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
 
     ds = format_variables(ds, units = species_info["units"])
 
@@ -1096,14 +1096,14 @@ def read_gcwerks_flask(network, species, site, instrument,
     else:
         raise ValueError("Flask data must use scale_defaults file")
 
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
-
     ds = format_attributes(ds,
                         network = network,
                         species = species,
                         calibration_scale = scale,
                         site = True)
+
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
     
     ds = format_variables(ds, species = species,
                         units="ppt",
@@ -1111,7 +1111,7 @@ def read_gcwerks_flask(network, species, site, instrument,
     
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     # Remove any excluded data
     if data_exclude:
@@ -1155,7 +1155,7 @@ def combine_datasets(network, species, site,
     # Read instrument dates from CSV files
     instruments = read_data_combination(network, format_species(species), site)
 
-    instrument_types, instrument_number_str = instrument_type_definition()
+    instrument_types, instrument_number_str = instrument_type_definition(network)
 
     # Combine datasets
     dss = []
@@ -1269,7 +1269,7 @@ def combine_datasets(network, species, site,
 
     # Summarise instrument types in attributes
     instrument_numbers = list(np.unique(ds_combined.instrument_type.values))
-    instrument_name = get_instrument_type(instrument_numbers)
+    instrument_name = get_instrument_type(instrument_numbers, network)
     ds_combined.attrs["instrument_type"] = "/".join(instrument_name)
 
     # Update network attribute

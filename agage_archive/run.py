@@ -10,7 +10,7 @@ from agage_archive.io import combine_datasets, combine_baseline, \
     output_dataset
 from agage_archive.formatting import format_species
 from agage_archive.convert import monthly_baseline
-from agage_archive.definitions import instrument_number, instrument_selection_text
+from agage_archive.definitions import define_instrument_number, instrument_selection_text
 
 
 def get_error(e):
@@ -52,7 +52,7 @@ def run_timestamp_checks(ds,
         instrument_types = instrument_types[timestamps.duplicated()].unique()
 
         # find instrument name in instrument_number
-        instrument_names = [k for k, v in instrument_number.items() if v in instrument_types]
+        instrument_names = [k for k, v in define_instrument_number(ds.attrs["network"]).items() if v in instrument_types]
         instrument_names = ", ".join(instrument_names)
 
         raise ValueError(f"Duplicate timestamps in {species} at {site}: {duplicated_str} for instrument {instrument_names}")
