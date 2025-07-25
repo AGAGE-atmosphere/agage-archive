@@ -430,11 +430,7 @@ def test_define_instrument_type():
 def test_get_data_read_function():
 
     func = get_data_read_function("agage_test", "GCMD")
-
-    if func.__name__ != "read_nc":
-        raise AssertionError(f"Expected 'read_nc', got '{func.__name__}'")
+    assert func.__name__ == "read_nc", f"Expected 'read_nc', got '{func.__name__}'"
 
     func = get_data_read_function("agage_test", "ALE")
-
-    if func.__name__ != "read_ale_gage":
-        raise AssertionError(f"Expected 'read_ale_gage', got '{func.__name__}'")
+    assert func.__name__ == "read_ale_gage", f"Expected 'read_ale_gage', got '{func.__name__}'"

@@ -1425,11 +1425,11 @@ def get_data_read_function(network, instrument):
         function: The data read function for the specified network and instrument.
     """
     
-    with open_data_file("data_read_functions.json", network=network, errors="ignore") as f:
+    with open_data_file("data_read_functions.json", network=network) as f:
         read_functions = json.load(f)
     
     if instrument not in read_functions:
-        error_message = f"Instrument {instrument} not found in NETWORK/data_read_functions.json for network {network}."
+        error_message = f"Instrument {instrument} not found in {network}/data_read_functions.json for network {network}."
         raise ValueError(error_message)
 
     return globals()[read_functions[instrument]]
