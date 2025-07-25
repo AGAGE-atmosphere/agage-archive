@@ -6,7 +6,7 @@ import json
 from agage_archive.config import Paths, open_data_file
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
-    read_gcms_magnum_file, read_gcms_magnum, define_instrument_type
+    read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
 from agage_archive.definitions import nc4_types
@@ -425,3 +425,16 @@ def test_define_instrument_type():
     assert ds["instrument_type"].attrs["long_name"] == "Instrument type"
     assert ds["instrument_type"].attrs["comment"] == instrument_type_str
     assert ds["instrument_type"].values[0] == get_instrument_number(instrument, ds.attrs["network"])
+
+
+def test_get_data_read_function():
+
+    func = get_data_read_function("agage_test", "GCMD")
+
+    if func.__name__ != "read_nc":
+        raise AssertionError(f"Expected 'read_nc', got '{func.__name__}'")
+
+    func = get_data_read_function("agage_test", "ALE")
+
+    if func.__name__ != "read_ale_gage":
+        raise AssertionError(f"Expected 'read_ale_gage', got '{func.__name__}'")

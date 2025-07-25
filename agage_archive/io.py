@@ -370,34 +370,20 @@ def read_baseline(network, species, site, instrument,
     with open_data_file("attributes.json", network=network) as f:
         attributes_default = json.load(f)
 
-    if instrument.lower() in ["ale", "gage"]:
+    read_function = get_data_read_function(network, instrument)
 
+    if read_function.__name__ == "read_gcms_magnum" or read_function.__name__ == "read_ale_gage":
         if flag_name != "git_pollution_flag":
             raise ValueError("Only git_pollution_flag is available for ALE/GAGE data")
-
-        ds_out = read_ale_gage(network, species, site, instrument,
-                           baseline = True,
-                           verbose=verbose,
-                           dropna=dropna)
-
-    elif instrument.lower() == "gcms-magnum":
-        
-        if flag_name != "git_pollution_flag":
-            raise ValueError("Only git_pollution_flag is available for ALE/GAGE data")
-
-        ds_out = read_gcms_magnum(network, species, site, instrument,
-                                verbose=verbose,
-                                scale = "defaults",
-                                baseline = True,
-                                resample = False,
-                                dropna = dropna)
-
+        else:
+            flag = True
     else:
+        flag = flag_name
 
-        ds_out = read_nc(network, species, site, instrument,
-                        verbose=verbose,
-                        baseline = flag_name,
-                        dropna=dropna)
+    ds_out = read_function(network, species, site, instrument,
+                    verbose=verbose,
+                    baseline = flag,
+                    dropna=dropna)
 
     # Add attributes
     ds_out.baseline.attrs = {
@@ -1426,4 +1412,25 @@ def output_dataset(ds, network,
 
     output_write(ds_out, out_path, filename,
                 output_subpath=output_subpath, verbose=verbose)
+
+
+def get_data_read_function(network, instrument):
+    """Get the data read function for a given network and instrument.
+    
+    Args:
+        network (str): Network name.
+        instrument (str): Instrument name.
+    
+    Returns:
+        function: The data read function for the specified network and instrument.
+    """
+    
+    with open_data_file("data_read_functions.json", network=network, errors="ignore") as f:
+        read_functions = json.load(f)
+    
+    if instrument not in read_functions:
+        error_message = f"Instrument {instrument} not found in NETWORK/data_read_functions.json for network {network}."
+        raise ValueError(error_message)
+
+    return globals()[read_functions[instrument]]
 

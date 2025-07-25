@@ -1,0 +1,15 @@
+{
+    "ALE": "read_ale_gage",
+    "GAGE": "read_ale_gage",
+    "GCMD": "read_nc",
+    "GCMS-ADS": "read_nc",
+    "GCECD": "read_nc",
+    "GCMS-MteCimone": "read_nc",
+    "GCPDD": "read_nc",
+    "GCMS-Medusa": "read_nc",
+    "GCMS-Medusa-flask": "read_gcwerks_flask",
+    "GCMS-Magnum": "read_gcms_magnum",
+    "Picarro": "read_nc",
+    "LGR": "read_nc",
+    "GCTOFMS": "read_nc"
+}
