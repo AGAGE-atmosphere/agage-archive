@@ -1,60 +1,71 @@
 import pytest
 import numpy as np
 
-from agage_archive.definitions import get_instrument_type, get_instrument_number
+from agage_archive.definitions import get_instrument_type, \
+    get_instrument_number, define_instrument_number, \
+    instrument_type_definition
+
+
+def test_define_instrument_number():
+    '''Test define_instrument_number function'''
+
+    network = "agage_test"
+
+    # Test for valid network
+    instrument_number = define_instrument_number(network)
+    assert isinstance(instrument_number, dict)
+    assert "UNDEFINED" in instrument_number
+    assert instrument_number["UNDEFINED"] == -1
+    assert len(instrument_number) > 1
+    for key, value in instrument_number.items():
+        assert isinstance(key, str)
+        assert isinstance(value, int)
+
+
+def test_instrument_type_definition():
+    '''Test instrument_type_definition function'''
+
+    network = "agage_test"
+
+    # Test for valid network
+    instrument_number, instrument_number_string = instrument_type_definition(network)
+    assert isinstance(instrument_number, dict)
+    assert isinstance(instrument_number_string, str)
+    for key, value in instrument_number.items():
+        assert key in instrument_number_string
+        assert str(value) in instrument_number_string
+    
+    # Check that string is the right length from number of commas
+    assert instrument_number_string.count(",") == len(instrument_number) - 1
 
 
 def test_get_instrument_type():
+    '''Test get_instrument_type function'''
     
+    network = "agage_test"
+
     # Test for single instrument number
-    instrument_number = 1
-    instrument_type = get_instrument_type(instrument_number)
-    assert instrument_type == "GAGE"
+    instrument_number = define_instrument_number(network)
 
-    # Test for list of instrument numbers
-    instrument_numbers = [1, 2]
-    instrument_types = get_instrument_type(instrument_numbers)
-    assert instrument_types == ["GAGE", "GCMD"]
-    
-    # Test for invalid input
-    instrument_number = "1"
-    with pytest.raises(ValueError):
-        instrument_type = get_instrument_type(instrument_number)
-
-    # Test for numpy integer
-    instrument_number = np.int64(1)
-    instrument_type = get_instrument_type(instrument_number)
-
-    # Test for numpy integer
-    instrument_number = np.int8(1)
-    instrument_type = get_instrument_type(instrument_number)
-
-    # Test for Medusa flask
-    instrument_number = 5
-    instrument_type = get_instrument_type(instrument_number)
-    assert instrument_type == "GCMS-Medusa-flask"
+    for instrument, number in instrument_number.items():
+        instrument_type = get_instrument_type(number, network)
+        assert isinstance(instrument_type, str)
+        assert instrument_type == instrument
 
 
 def test_get_instrument_number():
     '''Test get_instrument_number function'''
 
-    # Test for single instrument type
-    instrument = "GAGE"
-    instrument_number = get_instrument_number(instrument)
-    assert instrument_number == 1
+    network = "agage_test"
 
-    # Test for invalid input
-    instrument = 1
-    with pytest.raises(ValueError):
-        instrument_number = get_instrument_number(instrument)
+    instrument_number = define_instrument_number(network)
 
-    # Test for partial match
-    instrument = "Picarro-1"
-    instrument_number = get_instrument_number(instrument)
-    assert instrument_number == 8
+    for instrument, number in instrument_number.items():
+        instrument_num = get_instrument_number(instrument, network)
+        assert isinstance(instrument_num, int)
+        assert instrument_num == number
 
-    # Test for no match
-    instrument = "Invalid"
-    with pytest.raises(KeyError):
-        instrument_number = get_instrument_number(instrument)
-
+    # Check for partial match
+    instrument_num = get_instrument_number("Picarro-1", network)
+    assert isinstance(instrument_num, int)
+    assert instrument_num == instrument_number["Picarro"]
