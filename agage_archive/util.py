@@ -5,8 +5,9 @@ import yaml
 import pandas as pd
 import re
 import xarray as xr
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 from tqdm import tqdm
+from pathlib import Path
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
@@ -359,7 +360,7 @@ def archive_write_csv(archive_path, filename, data):
         archive_path = Path(archive_path)
 
     if archive_path.suffix == ".zip":
-        with ZipFile(archive_path, mode="a") as zip:
+        with ZipFile(archive_path, mode="a", compression=ZIP_DEFLATED, compresslevel=6) as zip:
             # prepend the archive name to the output filename so that it unzips to a folder
             output_filename = archive_path.name.split(".zip")[0] + "/" + filename
             zip.writestr(output_filename, data)
