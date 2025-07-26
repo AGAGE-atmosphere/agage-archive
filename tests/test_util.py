@@ -126,10 +126,10 @@ def test_archive_write_csv():
             assert filename_in_zip in zip.namelist(), f"{filename_in_zip} not found in zip"
             assert filename_with_subpath_in_zip in zip.namelist(), f"{filename_with_subpath_in_zip} not found in zip"
             with zip.open(filename_in_zip) as f:
-                content = f.read().decode("utf-8")
+                content = f.read().decode("utf-8-sig")
                 assert content == data, f"Content of {filename_in_zip} does not match expected data"
             with zip.open(filename_with_subpath_in_zip) as f:
-                content = f.read().decode("utf-8")
+                content = f.read().decode("utf-8-sig")
                 assert content == data, f"Content of {filename_with_subpath_in_zip} does not match expected data"
         
         archive_write_csv(non_zip_path, filename, data)
@@ -137,10 +137,10 @@ def test_archive_write_csv():
 
         # Check if the file was created
         assert (non_zip_path / filename).exists(), f"{non_zip_path / filename} does not exist"
-        with open(non_zip_path / filename, mode="r") as f:
+        with open(non_zip_path / filename, mode="r", encoding="utf-8-sig") as f:
             content = f.read()
             assert content == data, f"Content of {non_zip_path / filename} does not match expected data"
         assert (non_zip_path / filename_with_subpath).exists(), f"{non_zip_path / filename_with_subpath} does not exist"
-        with open(non_zip_path / filename_with_subpath, mode="r") as f:
+        with open(non_zip_path / filename_with_subpath, mode="r", encoding="utf-8-sig") as f:
             content = f.read()
             assert content == data, f"Content of {non_zip_path / filename_with_subpath} does not match expected data"
