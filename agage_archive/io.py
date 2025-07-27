@@ -2,7 +2,7 @@ import xarray as xr
 import json
 import pandas as pd
 import numpy as np
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 import json
 
 from agage_archive.config import Paths, open_data_file, data_file_list, \
@@ -1347,7 +1347,7 @@ def output_write(ds, out_path, filename,
 
     # Write file
     if out_path.suffix == ".zip":
-        with ZipFile(out_path, mode="a") as zip:
+        with ZipFile(out_path, mode="a", compression=ZIP_DEFLATED, compresslevel=6) as zip:
             zip.writestr(output_subpath + "/" + filename, ds.to_netcdf())
     
     else:

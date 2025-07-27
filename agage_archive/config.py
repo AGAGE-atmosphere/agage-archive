@@ -1,6 +1,6 @@
 from pathlib import Path as _Path
 import tarfile
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 import yaml
 from fnmatch import fnmatch, filter
 import psutil
@@ -483,7 +483,7 @@ def copy_to_archive(src_file, network):
                                 errors = "ignore_inputs")
 
     if archive_path.suffix == ".zip":
-        with ZipFile(archive_path, "a") as z:
+        with ZipFile(archive_path, "a", compression=ZIP_DEFLATED, compresslevel=6) as z:
             z.write(src_file, arcname=src_file.name)
     else:
         # Copy file into pth directory
