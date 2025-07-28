@@ -1,5 +1,8 @@
 import numpy as np
 
+from agage_archive.config import data_file_list
+
+
 nc4_types = {"f4": "float32",
             "f8": "float64",
             "i4": "int32",
@@ -64,41 +67,54 @@ species_translator_flask = {"c2f6": "PFC-116",
                             "chclccl2": "TCE",
                             }
 
-instrument_number = {"UNDEFINED": -1,
-                    "ALE": 0,
-                    "GAGE": 1,
-                    "GCMD": 2,
-                    "GCMS-ADS": 3,
-                    "GCMS-Medusa": 4,
-                    "GCMS-Medusa-flask": 5,
-                    "GCECD": 6,
-                    "GCTOFMS": 7,
-                    "Picarro": 8,
-                    "LGR": 9,
-                    "GCMS-MteCimone": 10,
-                    "GCPDD": 11,
-                    "GCMS-Magnum": 12,
-                    "GCMS": 13,}
-
 minimum_averaging_period = {"Picarro": "1H"}
 
 instrument_selection_text = "Recommended instrument(s) selected and combined by station PIs"
 
 
-def instrument_type_definition():
+def define_instrument_number(network):
+    '''Define instrument numbers for each instrument type based on data release schedule files
+
+    Args:
+        network (str): Network name
+
+    Returns:
+        dict: Dictionary of instrument numbers
+    '''
+
+    instrument_number = {"UNDEFINED": -1,}
+
+    _, _, files = data_file_list(network,
+                            sub_path = "data_release_schedule",
+                            pattern = "data_release_schedule_*.csv",)
+    
+    if not files:
+        raise FileNotFoundError("No data release schedule files found for the specified network.")
+    
+    counter = 0
+    for f in sorted(files):
+        instrument_number[f.split("_")[-1].split(".")[0]] = counter
+        counter += 1
+
+    return instrument_number
+
+
+def instrument_type_definition(network):
     '''Define instrument numbers for each instrument type
 
     Returns:
         str: Instrument type definition
     '''
-    
+
+    instrument_number = define_instrument_number(network)
+
     # Create string from dictionary defining instrument numbers
     instrument_number_string = ", ".join([f"{k}={v}" for k, v in instrument_number.items()])
 
     return instrument_number, instrument_number_string
 
 
-def get_instrument_type(instrument_numbers):
+def get_instrument_type(instrument_numbers, network):
     '''Get instrument type name from instrument number
 
     Args:
@@ -107,6 +123,8 @@ def get_instrument_type(instrument_numbers):
     Returns:
         str or list: Instrument type name(s)
     '''
+
+    instrument_number, _ = instrument_type_definition(network)
 
     # If instrument_numbers is an int, return a single string
     if isinstance(instrument_numbers, (int, np.integer)) and instrument_numbers in instrument_number.values():
@@ -120,7 +138,7 @@ def get_instrument_type(instrument_numbers):
     return instrument_type
 
 
-def get_instrument_number(instrument):
+def get_instrument_number(instrument, network):
     '''Get instrument number from instrument type name
 
     Args:
@@ -129,6 +147,8 @@ def get_instrument_number(instrument):
     Returns:
         int: Instrument number
     '''
+
+    instrument_number = define_instrument_number(network)
 
     if isinstance(instrument, (int, np.integer)):
         raise ValueError("instrument cannot be an int")
@@ -153,4 +173,3 @@ def get_instrument_number(instrument):
         raise KeyError(f"Could not find instrument number for {instrument}")
     
     return instrument_type
-

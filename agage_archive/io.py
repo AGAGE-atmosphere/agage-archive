@@ -129,10 +129,10 @@ def define_instrument_type(ds, instrument):
     """
 
     # Add instrument_type to dataset as variable
-    instrument_type = get_instrument_number(instrument)
+    instrument_type = get_instrument_number(instrument, ds.attrs["network"])
     ds["instrument_type"] = xr.DataArray(np.repeat(instrument_type, len(ds.time)),
                                     dims="time", coords={"time": ds.time})
-    instrument_number, instrument_type_str = instrument_type_definition()
+    instrument_number, instrument_type_str = instrument_type_definition(ds.attrs["network"])
 
     ds["instrument_type"].attrs = {
         "long_name": "Instrument type",
@@ -295,7 +295,7 @@ def read_nc(network, species, site, instrument,
 
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     # Remove any excluded data
     if data_exclude:
@@ -370,34 +370,20 @@ def read_baseline(network, species, site, instrument,
     with open_data_file("attributes.json", network=network) as f:
         attributes_default = json.load(f)
 
-    if instrument.lower() in ["ale", "gage"]:
+    read_function = get_data_read_function(network, instrument)
 
+    if read_function.__name__ == "read_gcms_magnum" or read_function.__name__ == "read_ale_gage":
         if flag_name != "git_pollution_flag":
             raise ValueError("Only git_pollution_flag is available for ALE/GAGE data")
-
-        ds_out = read_ale_gage(network, species, site, instrument,
-                           baseline = True,
-                           verbose=verbose,
-                           dropna=dropna)
-
-    elif instrument.lower() == "gcms-magnum":
-        
-        if flag_name != "git_pollution_flag":
-            raise ValueError("Only git_pollution_flag is available for ALE/GAGE data")
-
-        ds_out = read_gcms_magnum(network, species, site, instrument,
-                                verbose=verbose,
-                                scale = "defaults",
-                                baseline = True,
-                                resample = False,
-                                dropna = dropna)
-
+        else:
+            flag = True
     else:
+        flag = flag_name
 
-        ds_out = read_nc(network, species, site, instrument,
-                        verbose=verbose,
-                        baseline = flag_name,
-                        dropna=dropna)
+    ds_out = read_function(network, species, site, instrument,
+                    verbose=verbose,
+                    baseline = flag,
+                    dropna=dropna)
 
     # Add attributes
     ds_out.baseline.attrs = {
@@ -426,7 +412,7 @@ def read_baseline(network, species, site, instrument,
     ds_out.attrs["site_code"] = site.upper()
     ds_out.attrs["species"] = format_species(species)
     ds_out.attrs["instrument"] = instrument
-    ds_out.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds_out.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
     ds_out.attrs["network"] = network
     ds_out.attrs["product_type"] = "baseline flag"
     ds_out.attrs["instrument_selection"] = "Individual instruments"
@@ -672,9 +658,6 @@ def read_ale_gage(network, species, site, instrument,
         ds.attrs["instrument_comment"] = "NOTE: Some data points may have been removed from the original dataset " + \
             "because they were not felt to be representative of the baseline air masses (Paul Fraser, pers. comm.). "
 
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
-
     ds = format_attributes(ds,
                         instruments=[{"instrument": f"{instrument.upper()}_GCMD"}],
                         network=network,
@@ -682,9 +665,12 @@ def read_ale_gage(network, species, site, instrument,
                         calibration_scale=species_info["scale"],
                         )
 
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
+
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     ds = format_variables(ds, units=species_info["units"])
 
@@ -943,11 +929,8 @@ def read_gcms_magnum(network, species,
     extra_attrs["product_type"] = "mole fraction"
     extra_attrs["instrument_selection"] = "Individual instruments"
     extra_attrs["frequency"] = "high-frequency"
-    extra_attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    extra_attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
     extra_attrs["site_code"] = site
-
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
 
     # Add attributes
     ds = format_attributes(ds,
@@ -958,6 +941,9 @@ def read_gcms_magnum(network, species,
                         species=format_species(species),
                         site=False,
                         extra_attributes = extra_attrs)
+
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
 
     ds = format_variables(ds, units = species_info["units"])
 
@@ -1096,14 +1082,14 @@ def read_gcwerks_flask(network, species, site, instrument,
     else:
         raise ValueError("Flask data must use scale_defaults file")
 
-    # Add instrument_type to dataset as variable
-    ds = define_instrument_type(ds, instrument)
-
     ds = format_attributes(ds,
                         network = network,
                         species = species,
                         calibration_scale = scale,
                         site = True)
+
+    # Add instrument_type to dataset as variable
+    ds = define_instrument_type(ds, instrument)
     
     ds = format_variables(ds, species = species,
                         units="ppt",
@@ -1111,7 +1097,7 @@ def read_gcwerks_flask(network, species, site, instrument,
     
     # Set the instrument_type attribute
     # slightly convoluted method, but ensures consistency with combined files
-    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument))
+    ds.attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
 
     # Remove any excluded data
     if data_exclude:
@@ -1155,7 +1141,7 @@ def combine_datasets(network, species, site,
     # Read instrument dates from CSV files
     instruments = read_data_combination(network, format_species(species), site)
 
-    instrument_types, instrument_number_str = instrument_type_definition()
+    instrument_types, instrument_number_str = instrument_type_definition(network)
 
     # Combine datasets
     dss = []
@@ -1269,7 +1255,7 @@ def combine_datasets(network, species, site,
 
     # Summarise instrument types in attributes
     instrument_numbers = list(np.unique(ds_combined.instrument_type.values))
-    instrument_name = get_instrument_type(instrument_numbers)
+    instrument_name = get_instrument_type(instrument_numbers, network)
     ds_combined.attrs["instrument_type"] = "/".join(instrument_name)
 
     # Update network attribute
@@ -1426,4 +1412,25 @@ def output_dataset(ds, network,
 
     output_write(ds_out, out_path, filename,
                 output_subpath=output_subpath, verbose=verbose)
+
+
+def get_data_read_function(network, instrument):
+    """Get the data read function for a given network and instrument.
+    
+    Args:
+        network (str): Network name.
+        instrument (str): Instrument name.
+    
+    Returns:
+        function: The data read function for the specified network and instrument.
+    """
+    
+    with open_data_file("data_read_functions.json", network=network) as f:
+        read_functions = json.load(f)
+    
+    if instrument not in read_functions:
+        error_message = f"Instrument {instrument} not found in {network}/data_read_functions.json for network {network}."
+        raise ValueError(error_message)
+
+    return globals()[read_functions[instrument]]
 

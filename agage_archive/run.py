@@ -6,11 +6,10 @@ from agage_archive.config import Paths, open_data_file, data_file_list, data_fil
     copy_to_archive, delete_archive, create_empty_archive
 from agage_archive.data_selection import read_release_schedule, read_data_combination, choose_scale_defaults_file
 from agage_archive.io import combine_datasets, combine_baseline, \
-    read_nc, read_baseline, read_ale_gage, read_gcwerks_flask, read_gcms_magnum, \
-    output_dataset
+    read_baseline, output_dataset, get_data_read_function
 from agage_archive.formatting import format_species
 from agage_archive.convert import monthly_baseline
-from agage_archive.definitions import instrument_number, instrument_selection_text
+from agage_archive.definitions import define_instrument_number, instrument_selection_text
 
 
 def get_error(e):
@@ -52,7 +51,7 @@ def run_timestamp_checks(ds,
         instrument_types = instrument_types[timestamps.duplicated()].unique()
 
         # find instrument name in instrument_number
-        instrument_names = [k for k, v in instrument_number.items() if v in instrument_types]
+        instrument_names = [k for k, v in define_instrument_number(ds.attrs["network"]).items() if v in instrument_types]
         instrument_names = ", ".join(instrument_names)
 
         raise ValueError(f"Duplicate timestamps in {species} at {site}: {duplicated_str} for instrument {instrument_names}")
@@ -230,22 +229,14 @@ def run_individual_instrument(network, instrument,
     
     rs = read_release_schedule(network, instrument)
 
+    read_function = get_data_read_function(network, instrument)
+    read_baseline_function = read_baseline
+    instrument_out = instrument.lower()
+
     if instrument.upper() == "ALE" or instrument.upper() == "GAGE":
-        read_function = read_ale_gage
-        read_baseline_function = read_baseline
         instrument_out = instrument.lower() + "-gcmd"
     elif instrument.upper() == "GCMS-MEDUSA-FLASK":
-        read_function = read_gcwerks_flask
         read_baseline_function = None
-        instrument_out = "gcms-medusa-flask"
-    elif instrument.upper() == "GCMS-MAGNUM":
-        read_function = read_gcms_magnum
-        read_baseline_function = read_baseline
-        instrument_out = "gcms-magnum"
-    else:
-        read_function = read_nc
-        read_baseline_function = read_baseline
-        instrument_out = instrument.lower()
 
     if species:
         # Process only those species that are in the release schedule
