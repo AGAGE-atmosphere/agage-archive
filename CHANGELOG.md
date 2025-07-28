@@ -5,11 +5,17 @@ Notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - XXXX-XX-XX
+## [0.2] - 2025-07-28
 
 ### Added
 
 - Functionality to convert an archive of netCDF files to csv files (util.archive_to_csv)
+- instrument_type is now taken directly from the filenames in data_release_schedule
+- You must specify a data read/processing function for each instrument type in ```data/NETWORK/data_read_function.json```. Current functions are:
+  - ```read_nc``` (reads GCWerks netcdf files)
+  - ```read_gcwerks_flask``` (reads GCWerks flask data files, and possibly GCCompare input netcdf files?)
+  - ```read_ale_gage``` (ALE/GAGE files in the Georgia Institute of Technology 1994 format)
+  - ```read_gcms_magnum``` (reads the archived "Magnum" files at Mace Head. Unlikely to be used for any other format)
 
 ### Removed
 
