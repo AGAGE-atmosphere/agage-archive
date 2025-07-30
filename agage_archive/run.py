@@ -111,7 +111,7 @@ def run_individual_site(site, species, network, instrument,
             ds = read_function(network, species, site, instrument,
                             verbose=verbose,
                             resample=resample,
-                            scale=choose_scale_defaults_file(network, instrument))
+                            scale=choose_scale_defaults_file(network, instrument, site=site))
 
             if baseline:
                 ds_baseline = read_baseline_function(network, species, site, instrument,

@@ -3,7 +3,22 @@ import pandas as pd
 import xarray as xr
 
 from agage_archive.data_selection import read_data_exclude, calibration_scale_default, \
-                                        read_data_combination, read_release_schedule
+                                        read_data_combination, read_release_schedule, \
+                                        choose_scale_defaults_file
+
+
+def test_choose_scale_defaults_file():
+    """ Test the choose_scale_defaults_file function """
+
+    # Test with instrument and site
+    # Note that the test file is called "scale_defaults-test-cgo.csv"
+    assert choose_scale_defaults_file("agage_test", "test", site="CGO") == "defaults-test-cgo"
+
+    # Test with instrument only: should return the defaults file for that instrument, since this file isn't there
+    assert choose_scale_defaults_file("agage_test", "GCMD") == "defaults"
+
+    # Test with the "test" instrument and no site: should return the defaults file for that instrument
+    assert choose_scale_defaults_file("agage_test", "test") == "defaults-test"
 
 
 def test_calibration_scale_defaults():
@@ -12,7 +27,8 @@ def test_calibration_scale_defaults():
     assert calibration_scale_default("agage_test", "CO2") == "WMO-X2019"
     assert calibration_scale_default("agage_test", "CH4") == "TU-87"
     assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults-test") == "TESTING"
-
+    assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults-test-cgo") == "TESTING-CGO"
+    
 
 def test_read_data_exclude():
     '''Test read_data_exclude function'''

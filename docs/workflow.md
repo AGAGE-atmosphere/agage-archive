@@ -133,9 +133,9 @@ If you only want to exclude data from the combined data files (e.g., if you want
 
 ### ```scale_defaults.csv```
 
-Use this file to specify a calibration scale for each species. The ```scale_defaults.csv``` file is used for the combined files and each, instrument by default. However, if data for a particular instrument should be released in the individual instrument files on a different scale, this can be specified in ```scale_defaults-<instrument>```. Note that a family of instruments can be used in the filename, and it is not necessary to specify a file for each individual instrument (e.g., "Picarro" will be used by any instrument called "Picarro-1", "Picarro-2", etc.).
+Use this file to specify a calibration scale for each species. The ```scale_defaults.csv``` file is used for the combined files and each, instrument by default. However, if data for a particular instrument should be released in the individual instrument files on a different scale, this can be specified in ```scale_defaults-<instrument>```. Note that a family of instruments can be used in the filename, and it is not necessary to specify a file for each individual instrument (e.g., "Picarro" will be used by any instrument called "Picarro-1", "Picarro-2", etc.). To have a particular scale for a particular instrument and site (e.g., the CGO and MHD CO measurements are on different scales), you can further specify: ```scale_defaults-<instrument>-<site>```. Note that these files are used in order of preference: ```scale_defaults-<instrument>-<site>``` > ```scale_defaults-<instrument>``` > ```scale_defaults```.  At the moment, the combine_datasets functionality can only use ```scale_defaults.csv```.
 
-Any required scale conversion will be carried out using the [OpenGHG calscales](https://github.com/openghg/openghg_calscales) library. If a conversion factor is missing in there, raise an issue, and suggest a conversion factor/function.
+Any required scale conversion will be carried out using the [OpenGHG calscales](https://github.com/openghg/openghg_calscales) library. If a conversion factor is missing in there, raise an issue in that library, and suggest a conversion factor/function.
 
 ## Archive structure
 
