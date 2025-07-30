@@ -1425,8 +1425,15 @@ def get_data_read_function(network, instrument):
         function: The data read function for the specified network and instrument.
     """
     
-    with open_data_file("data_read_functions.json", network=network) as f:
-        read_functions = json.load(f)
+    try:
+        with open_data_file("data_read_functions.json", network=network) as f:
+            read_functions = json.load(f)
+    except FileNotFoundError:
+        error_message = f"data_read_functions.json not found for network {network}. " + \
+                        "Please ensure the file exists and is correctly formatted. " + \
+                        "This is a new requirement for the agage_archive package. " + \
+                        "Please add to your repository in data/network/data_read_functions.json."
+        raise FileNotFoundError(error_message)
     
     if instrument not in read_functions:
         error_message = f"Instrument {instrument} not found in {network}/data_read_functions.json for network {network}."
