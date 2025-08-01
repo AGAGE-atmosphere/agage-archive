@@ -181,18 +181,7 @@ def setup(network = ""):
                     "gage_path": "gage",
                     "magnum_path": "data-gcms-magnum.tar.gz",
                     "output_path": "output",
-                },
-            "agage":
-                {
-                    "md_path": "data-nc",
-                    "optical_path": "data-optical-nc",
-                    "gcms_path": "data-gcms-nc",
-                    "gcms_flask_path": "data-gcms-flask-nc",
-                    "ale_path": "ale_gage_sio1993/ale",
-                    "gage_path": "ale_gage_sio1993/gage",
-                    "magnum_path": "data-gcms-magnum.tar.gz",
-                    "output_path": "agage-public-archive.zip",
-            }
+                }
         }
     else:
         config["paths"] = {

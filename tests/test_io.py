@@ -339,7 +339,7 @@ def test_read_gcms_magnum_file():
     species = "HFC-134a"
 
     # Test file is in a subset of the tar archive, stored in a folder with the same name
-    sub_path = paths.magnum_path.split(".tar.gz")[0]
+    sub_path = paths.__getattribute__("GCMS-Magnum_path").split(".tar.gz")[0]
 
     with open_data_file("MHD-ads_1994.dap",
                         network="agage_test",
