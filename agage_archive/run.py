@@ -144,7 +144,7 @@ def run_individual_site(site, species, network, instrument,
                 if "individual" in output_subpath:
                     instrument_str = instrument_out
                     if not "instrument_selection_text" in ds.attrs:
-                        raise ValueError(f"Instrument selection text not found in attributes for {species} at {site}")
+                        raise ValueError(f"Instrument selection text not found in attributes")
                     instrument_selection_text_str = ds.attrs["instrument_selection"] #Should default to "Individual instruments"
                 else:
                     instrument_str = ""
