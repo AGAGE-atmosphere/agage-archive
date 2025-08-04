@@ -1,5 +1,7 @@
 # Updating the AGAGE public archive
 
+*These instructions have evolved over several versions of the code and are not particularly well organised. It is recommended that you read all the way through first.*
+
 This repository uses two types of version control:
 - git is used to track versions of the code
 - *(Optional)*: [dvc](https://dvc.org) is used to track versions of the processed data
@@ -65,21 +67,24 @@ Firstly, make sure that the git repository is up to date (make sure you know how
 
 If you want to update the archive:
 
-1. This library must be called as a dependency from a downstream archive with all of the relevant data specification files. This ensures that the code and data versioning can be independent. A template of a data specification repository is provided at https://github.com/AGAGE-atmosphere/agage-archive-template. 
-2. Download the latest data from GCWerks, and place it at the locations specified in your ```config.yaml``` file.
-3. Modify the data specification files as required, in ```data/agage``` (see section Data Specification Files)`:
+1. This library must be called as a dependency from a downstream archive with all of the relevant data specification files. This ensures that the code and data versioning can be independent. A template of a data specification repository is provided at https://github.com/AGAGE-atmosphere/agage-archive-template, and the AGAGE data specification repository is at https://github.com/AGAGE-atmosphere/agage-archive-release. 
+
+The next steps should then be carried out in your data specification repository:
+
+2. Download the latest data from GCWerks, and place it at the locations specified in your ```config.yaml``` file (see [Data Paths](#data-paths), below), or use symlinks.
+3. Modify the data specification files as required, in ```data/<network>``` (see section Data Specification Files)`:
 ```
 data_release_schedule/
 data_combination/
 data_exclude/
 scale_defaults.csv
 ```
-4. For each instrument, specify which read function should be used in ```data/NETWORK/data_read_functions.json```. Current options are ```read_nc``` (main GCWerks netcdf files), ```read_gcwerks_flask``` (GCWerks flask measurement output format), ```read_ale_gage``` (only for ALE/GAGE data in the GA Tech 1994 format), ```read_gcms_magnum``` (only for reading MHD GCMS ``Magnum'' files). These functions are in ```agage_archive.io```. 
-5. Re-run ```run.py```, or any other processing functions that you'd like to run. 
-6. Thoroughly check the processed data files by examining the netcdf files stored in the newly created ```data/agage/agage-public-archive.zip``` (the functions in ```io.py``` can automatically extract files from the zip archive, given the appropriate site, instrument, etc.), and using the ```notebooks/visualise.ipynb``` data viewer.
+4. For each instrument, specify which read function should be used in ```data/NETWORK/data_read_functions.json```. Current options are in ```io.py``` and are called ```read_nc``` (main GCWerks netcdf files), ```read_gcwerks_flask``` (GCWerks flask measurement output format), ```read_ale_gage``` (only for ALE/GAGE data in the GA Tech 1994 format), ```read_gcms_magnum``` (only for reading MHD GCMS ``Magnum'' files). These functions are in ```agage_archive.io```. 
+5. Call the run script in your repository (e.g., ```run.py``` in the template repo). 
+6. Thoroughly check the processed data files by examining the netcdf files stored in the newly created ```data/<network>/<output_archive_name><.zip>```, and using the ```notebooks/visualise.ipynb``` data viewer.
 7. (*Optional*) Once you're happy, run: 
 ```
-dvc add data/agage/agage-public-archive.zip
+dvc add data/<network>/<output-archive-name><.zip>
 git commit -am "COMMENT DESCRIBING THE CHANGE YOU'VE MADE"
 dvc push
 git push
@@ -93,7 +98,7 @@ Paths are specified in a ```config.yaml``` file, a template of which can be crea
 python agage_archive/config.py
 ```
 
-As of v0.2, each instrument must have its own path specified in the format (case sensitive) ```<instrument>_path: relative/path/to/data```. E.g.:
+As of ```v0.2```, each instrument must have its own path specified in the format (case sensitive) ```<instrument>_path: relative/path/to/data```. E.g.:
 
 E.g., the following config is required to run the test suite in this repository:
 
