@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All files now contain almost the same variables (e.g., instrument_type, even if there is only one instrument)
 - A release schedule is required for all instruments now. Previously missing from GCMS-Magnum and GCMS-Medusa-flask instruments.
 - The instrument_type values are defined flexibly for each network. Instrument types are taken from the filename of the release schedule csv files.
+- The ```config.yaml``` file now expects a path for every instrument_type defined in the release schedules
 
 ### Fixed
 

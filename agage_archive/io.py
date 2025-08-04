@@ -165,34 +165,16 @@ def read_nc_path(network, species, site, instrument):
     if species_search in gcwerks_species:
         species_search = gcwerks_species[species_search]
 
-    gcmd_instruments = ["GCMD", "GCECD", "GCPDD"]
-    optical_instruments = ["Picarro", "LGR"]
-    gcms_instruments = ["GCMS-ADS", "GCMS-Medusa", "GCMS-MteCimone", "GCTOFMS", "GCMS"]
-
     # Determine sub-path within data directory
-    sub_path = None
-
-    for gcmd_instrument in gcmd_instruments:
-        if gcmd_instrument in instrument:
-            sub_path = paths.md_path
-            break
-    for optical_instrument in optical_instruments:
-        if optical_instrument in instrument:
-            sub_path = paths.optical_path
-            break
-    for gcms_instrument in gcms_instruments:
-        if gcms_instrument in instrument:
-            sub_path = paths.gcms_path
-            break
+    sub_path = paths.__getattribute__(f"{instrument}_path")
     
-    if sub_path == None:
-        raise ValueError(f"Instrument must be one of {gcmd_instruments} {gcms_instruments}")
-
     # search for netcdf files matching instrument, site and species
     nc_files = data_file_list(network, sub_path, f"*-{instrument}*_{site}_{species_search}.nc")[2]
 
     if len(nc_files) == 0:
-        raise FileNotFoundError(f"Can't find file matching *-{instrument}*_{site}_{species_search}.nc in data/{network}/{sub_path}")
+        errorMessage = f"Can't find file matching *-{instrument}*_{site}_{species_search}.nc in data/{network}/{sub_path}. " + \
+            "Have you seen the v0.2 change: paths should be specified as <instrument>_path in config.yaml?"
+        raise FileNotFoundError(errorMessage)
     elif len(nc_files) > 1:
         raise FileNotFoundError(f"Found more than one file matching *-{instrument}*_{site}_{species_search}.nc in data/{network}/{sub_path}")
     else:
@@ -575,7 +557,7 @@ def read_ale_gage(network, species, site, instrument,
             timestamp_issues = {}
 
     # Path to relevant sub-folder
-    folder = paths.__getattribute__(f"{instrument.lower()}_path")
+    folder = paths.__getattribute__(f"{instrument}_path")
 
     with open_data_file(f"{site_info[site]['gcwerks_name']}_sio1993.gtar.gz",
                         network = network,
@@ -868,8 +850,10 @@ def read_gcms_magnum(network, species,
         species_info = json.load(f)[format_species(species)]
 
     paths = Paths(network)
+    if not hasattr(paths, "GCMS-Magnum_path"):
+        raise ValueError("No GCMS-Magnum_path attribute in config.yaml.")
 
-    with open_data_file(paths.magnum_path,
+    with open_data_file(paths.__getattribute__("GCMS-Magnum_path"),
                         network = network,
                         verbose=verbose) as tar:
 
@@ -1023,14 +1007,11 @@ def read_gcwerks_flask(network, species, site, instrument,
         raise ValueError(f"Inlet height not found in attributes_site.json for {site}")
     else:
         inlet_height = site_info["inlet_height"]
-
-    if instrument != "GCMS-Medusa-flask":
-        raise ValueError(f"Only valid for instrument GCMS-Medusa-flask, not {instrument}")
     
     species_search = format_species(species)
     species_flask = format_species_flask(species)
 
-    sub_path = Paths(network, site=site.lower()).gcms_flask_path
+    sub_path = Paths(network, site=site.lower()).__getattribute__(f"{instrument}_path")
     
     network_out, sub_path, nc_files = data_file_list(network, sub_path, f"{species_flask.lower()}_air.nc", site=site.lower())
 
@@ -1155,21 +1136,29 @@ def combine_datasets(network, species, site,
     for instrument, date in instruments.items():
 
         # Read data
-        if instrument in ["ALE", "GAGE"]:
-            ds = read_ale_gage(network, species, site, instrument,
-                               verbose=verbose,
-                               scale=scale)
-        elif instrument == "GCMS-Magnum":
-            ds = read_gcms_magnum(network, species, site, instrument,
-                                verbose=verbose,
-                                scale = scale,
-                                resample = False,
-                                dropna = dropna)
-        else:
-            ds = read_nc(network, species, site, instrument,
-                        verbose=verbose,
-                        scale=scale,
-                        resample = resample)
+        read_function = get_data_read_function(network, instrument)
+
+        ds = read_function(network, species, site, instrument,
+                           verbose=verbose,
+                           scale=scale,
+                           resample=resample,
+                           dropna=dropna)
+
+        # if instrument in ["ALE", "GAGE"]:
+        #     ds = read_ale_gage(network, species, site, instrument,
+        #                        verbose=verbose,
+        #                        scale=scale)
+        # elif instrument == "GCMS-Magnum":
+        #     ds = read_gcms_magnum(network, species, site, instrument,
+        #                         verbose=verbose,
+        #                         scale = scale,
+        #                         resample = False,
+        #                         dropna = dropna)
+        # else:
+        #     ds = read_nc(network, species, site, instrument,
+        #                 verbose=verbose,
+        #                 scale=scale,
+        #                 resample = resample)
 
         # Run data_exclude again, to remove any data that should be excluded for the combined dataset
         ds = read_data_exclude(ds, format_species(species), site, instrument,

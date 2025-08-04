@@ -173,35 +173,29 @@ def setup(network = ""):
         config["paths"] = {
             "agage_test":
                 {
-                    "md_path": "data-nc",
-                    "optical_path": "data-optical-nc",
-                    "gcms_path": "data-gcms-nc",
-                    "gcms_flask_path": "data-gcms-flask-nc",
-                    "ale_path": "ale",
-                    "gage_path": "gage",
-                    "magnum_path": "data-gcms-magnum.tar.gz",
-                    "output_path": "output",
-                },
-            "agage":
-                {
-                    "md_path": "data-nc",
-                    "optical_path": "data-optical-nc",
-                    "gcms_path": "data-gcms-nc",
-                    "gcms_flask_path": "data-gcms-flask-nc",
-                    "ale_path": "ale_gage_sio1993/ale",
-                    "gage_path": "ale_gage_sio1993/gage",
-                    "magnum_path": "data-gcms-magnum.tar.gz",
-                    "output_path": "agage-public-archive.zip",
-            }
+                    "ALE_path": "ale",
+                    "GAGE_path": "gage",
+                    "GCMD_path": "data-nc",
+                    "GCMS-ADS_path": "data-gcms-nc",
+                    "GCECD_path": "data-nc",
+                    "GCMS-MteCimone_path": "data-gcms-nc",
+                    "GCPDD_path": "data-nc",
+                    "GCMS-Medusa_path": "data-gcms-nc",
+                    "GCMS-Medusa-flask_path": {
+                      "cbw": "data-gcms-flask-nc"
+                    },
+                    "GCMS-Magnum_path": "data-gcms-magnum.tar.gz",
+                    "Picarro_path": "data-optical-nc",
+                    "LGR_path": "data-optical-nc",
+                    "GCTOFMS_path": "data-gcms-nc",
+                    "output_path": "output"
+                }
         }
     else:
         config["paths"] = {
             network:
                 {
-                    "md_path": "",
-                    "optical_path": "",
-                    "gcms_path": "",
-                    "gcms_flask_path": "",
+                    "YOUR-INSTRUMENT_path": "",
                     "output_path": "output",
                 }
         }
