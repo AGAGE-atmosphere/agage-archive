@@ -2,11 +2,11 @@
 
 This repository uses two types of version control:
 - git is used to track versions of the code
-- [dvc](https://dvc.org) is used to track versions of the processed data
+- *(Optional)*: [dvc](https://dvc.org) is used to track versions of the processed data
 
 Make sure that you have git installed on your system before you start.
 
-The dvc and dvc-gcloud (Google Cloud plugin) are listed in the requirements file, and can be installed from conda, using the conda-forge channel.
+The dvc and dvc-gcloud (Google Cloud plugin) are listed in the requirements file, and can be installed from conda, using the conda-forge channel. But these are optional, only if you want to use version control with the output files (e.g., for syncing with other users).
 
 ## Initial setup
 
@@ -16,7 +16,7 @@ Alternatively, if avoiding conda, install a virtual environment using ```python 
 Make sure that you have installed the required dependencies (see ```requirements.txt```), which can be done using ```pip install -r requirements.txt```.
 
 Allow the package to be callable using ```pip install --no-build-isolation --no-deps -e . ``` and run ```python agage_archive/config.py```, to set the desired input and output paths.
-If using conda, you can use ```conda develop .``` but note that this functionality is now depricated.
+If using ```conda-build```, you can use ```conda develop .``` from the repository folder.
 
 ### DVC initial setup
 
@@ -86,9 +86,45 @@ dvc push
 git push
 ```
 
-## Copying relevant input files
+## Data paths
 
-You will need to copy over the GCWerks output folders ```data-nc/md```, ```data-nc/gcms``` and ```data-nc/optical``` from whereever you pull the data to your local ```data/archive``` folder (and zip the two folders if not zipped already).
+Paths are specified in a ```config.yaml``` file, a template of which can be created by running: 
+
+```
+python agage_archive/config.py
+```
+
+As of v0.2, each instrument must have its own path specified in the format (case sensitive) ```<instrument>_path: relative/path/to/data```. E.g.:
+
+E.g., the following config is required to run the test suite in this repository:
+
+```
+user:
+  name: My Name, University of Somewhere
+paths:
+  agage_test:
+    ALE_path: ale
+    GAGE_path: gage
+    GCMD_path: data-nc
+    GCMS-ADS_path: data-gcms-nc
+    GCECD_path: data-nc
+    GCMS-MteCimone_path: data-gcms-nc
+    GCPDD_path: data-nc
+    GCMS-Medusa_path: data-gcms-nc
+    GCMS-Medusa-flask_path:
+      cbw: data-gcms-flask-nc
+    GCMS-Magnum_path: data-gcms-magnum.tar.gz
+    Picarro_path: data-optical-nc
+    LGR_path: data-optical-nc
+    GCTOFMS_path: data-gcms-nc
+    output_path: output
+```
+
+*Each of these paths is relative to ```data/<network>```.
+
+## Copying or linking to input files
+
+You will need to copy over, or link to the data folders, relative to ```data/<network>```. E.g., ```data-nc/md```, ```data-nc/gcms``` and ```data-nc/optical``` from whereever you pull the data to your local ```data/archive``` folder (and zip the two folders if not zipped already). These can be folders of zip archives (if zip archives, make sure the ```.zip``` suffix appears in the path specification).
 
 ## Data Specification Files
 
