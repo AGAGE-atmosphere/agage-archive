@@ -1058,6 +1058,7 @@ def read_gcwerks_flask(network, species, site, instrument,
         ds["mf_std"] = mf_std
 
     # Get cal scale from scale_defaults file
+    # TODO: THIS IS DANGEROUS, but there's currently no way to specify a scale for flask data
     if scale == "defaults":
         scale = calibration_scale_default(network, species)
     else:

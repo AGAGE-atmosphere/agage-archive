@@ -65,6 +65,7 @@ species_translator_flask = {"c2f6": "PFC-116",
                             "ccl4": "CCl4",
                             "ccl2ccl2": "PCE",
                             "chclccl2": "TCE",
+                            "clch2ch2cl": "ClCH2CH2Cl",
                             }
 
 minimum_averaging_period = {"Picarro": "1H"}
