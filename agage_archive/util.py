@@ -430,3 +430,32 @@ def archive_to_csv(network):
 
             archive_write_csv(csv_archive_path, filename_csv, output_data)
 
+
+def compare_archive_versions(version_1, version_2):
+    """ Compare the files in two different zip archives. 
+    Compares filenames in both archives, ignoring only the version number at the end of each file
+
+    """
+
+    def get_file_names(archive_path):
+        """Get file names from a zip archive."""
+        with ZipFile(archive_path, 'r') as zip_file:
+            return [Path(name).name for name in zip_file.namelist()]
+
+    # Get file names from both archives
+    files_1 = get_file_names(version_1)
+    files_2 = get_file_names(version_2)
+
+    # Remove version numbers from file names
+    def remove_version_suffix(file_name):
+        return re.sub(r'(-v\d+)?\.zip$', '.zip', file_name)
+
+    files_1 = [remove_version_suffix(f) for f in files_1]
+    files_2 = [remove_version_suffix(f) for f in files_2]
+
+    # Compare the two lists
+    return set(files_1) == set(files_2)
+
+
+aa = compare_archive_versions("", "")
+
