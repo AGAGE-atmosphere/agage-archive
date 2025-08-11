@@ -435,27 +435,56 @@ def compare_archive_versions(version_1, version_2):
     """ Compare the files in two different zip archives. 
     Compares filenames in both archives, ignoring only the version number at the end of each file
 
+    Args:
+        version_1 (str): Path to the first archive
+        version_2 (str): Path to the second archive
     """
+
+    archive_version_1 = Path(version_1)
+    archive_version_2 = Path(version_2)
+
+    # Check that both are zip files
+    if archive_version_1.suffix != ".zip" or archive_version_2.suffix != ".zip":
+        raise ValueError("Both files must be zip archives.")
+
+    # Assume version number is in the archive name
+    version_number_1 = archive_version_1.stem.split("-")[-1]
+    version_number_2 = archive_version_2.stem.split("-")[-1]
 
     def get_file_names(archive_path):
         """Get file names from a zip archive."""
         with ZipFile(archive_path, 'r') as zip_file:
-            return [Path(name).name for name in zip_file.namelist()]
+            # Return filenames, preserving subdirectories
+            return [Path(name).as_posix() for name in zip_file.namelist()]
 
     # Get file names from both archives
-    files_1 = get_file_names(version_1)
-    files_2 = get_file_names(version_2)
+    files_1 = get_file_names(archive_version_1)
+    files_2 = get_file_names(archive_version_2)
 
     # Remove version numbers from file names
-    def remove_version_suffix(file_name):
-        return re.sub(r'(-v\d+)?\.zip$', '.zip', file_name)
+    def remove_version_suffix(file_name, version_number):
+        return file_name.replace(f"{version_number}", "")
 
-    files_1 = [remove_version_suffix(f) for f in files_1]
-    files_2 = [remove_version_suffix(f) for f in files_2]
+    files_1 = [remove_version_suffix(f, version_number_1) for f in files_1]
+    files_2 = [remove_version_suffix(f, version_number_2) for f in files_2]
 
     # Compare the two lists
-    return set(files_1) == set(files_2)
+    set_1 = set(files_1)
+    set_2 = set(files_2)
 
+    def print_sorted_file_diff(set_a, set_b):
+        diff = sorted(set_a - set_b, key=lambda x: x.count("/"))
+        species = [f.split("/")[0] for f in diff]
+        species_set = set(species)
 
-aa = compare_archive_versions("", "")
+        for s in sorted(species_set):
+            for f, sp in zip(diff, species):
+                if sp == s:
+                    print(f" - {f}")
+
+    print(f"Files in version {version_number_1}, not in {version_number_2}:")
+    print_sorted_file_diff(set_1, set_2)
+
+    print(f"Files in version {version_number_2}, not in {version_number_1}:")
+    print_sorted_file_diff(set_2, set_1)
 
