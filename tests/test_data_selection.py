@@ -12,13 +12,13 @@ def test_choose_scale_defaults_file():
 
     # Test with instrument and site
     # Note that the test file is called "scale_defaults-test-cgo.csv"
-    assert choose_scale_defaults_file("agage_test", "test", site="CGO") == "defaults-test-cgo"
+    assert choose_scale_defaults_file("agage_test", "test", site="CGO") == "defaults_test_cgo"
 
     # Test with instrument only: should return the defaults file for that instrument, since this file isn't there
     assert choose_scale_defaults_file("agage_test", "GCMD") == "defaults"
 
     # Test with the "test" instrument and no site: should return the defaults file for that instrument
-    assert choose_scale_defaults_file("agage_test", "test") == "defaults-test"
+    assert choose_scale_defaults_file("agage_test", "test") == "defaults_test"
 
 
 def test_calibration_scale_defaults():
@@ -26,8 +26,8 @@ def test_calibration_scale_defaults():
 
     assert calibration_scale_default("agage_test", "CO2") == "WMO-X2019"
     assert calibration_scale_default("agage_test", "CH4") == "TU-87"
-    assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults-test") == "TESTING"
-    assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults-test-cgo") == "TESTING-CGO"
+    assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults_test") == "TESTING"
+    assert calibration_scale_default("agage_test", "CO2", scale_defaults_file="defaults_test_cgo") == "TESTING-CGO"
     
 
 def test_read_data_exclude():
