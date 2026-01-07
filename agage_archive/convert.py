@@ -569,9 +569,9 @@ def scale_convert(ds, scale_new_in):
         ds (xarray.Dataset): Dataset containing mole fractions
         scale_new_in (str): New scale to convert to. If None, no conversion is applied.
             If "defaults", the default scale for the species is used from the scale_defaults.csv file
-            If "defaults-individual", the default scale for the species is used from the scale_defaults-individual.csv file. 
-            You can set any other default file by setting to the path to something like "defaults-<suffix>", 
-            which will look for a file called scale_defaults-<suffix>.csv
+            If "defaults_individual", the default scale for the species is used from the scale_defaults_individual.csv file. 
+            You can set any other default file by setting to the path to something like "defaults_<suffix>", 
+            which will look for a file called scale_defaults_<suffix>.csv
         
     Returns:
         ndarray,float: Mole fraction in new scale

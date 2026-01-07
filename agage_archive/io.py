@@ -201,7 +201,7 @@ def read_nc(network, species, site, instrument,
         data_exclude (bool, optional): Exclude data based on data_exclude csv file. Defaults to True.
         scale (str, optional): Scale to convert to. Defaults to "defaults", which will read scale_defaults file. 
             If None, will keep original scale. If you want to use a different default scale, create a new scale defaults file, 
-            with the name scale_defaults-<suffix>.csv and set to "defaults-<suffix>".
+            with the name scale_defaults_<suffix>.csv and set to "defaults_<suffix>".
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         dropna (bool, optional): Drop NaN values. Default to True.
         
