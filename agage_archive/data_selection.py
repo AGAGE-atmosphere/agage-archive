@@ -147,26 +147,26 @@ def choose_scale_defaults_file(network, instrument, site=""):
 
     scale_defaults = "defaults"
     _, _, scale_defaults_files = data_file_list(network=network,
-                                        pattern = f"scale_defaults-*.csv",
+                                        pattern = f"scale_defaults_*.csv",
                                         errors="ignore")
     
     # Split the file name into parts, separated by '-'
     # Sort by the length of the parts, so that more specific files are checked first
-    scale_defaults_files_sorted = sorted(scale_defaults_files, key=lambda x: len(x.split("-")), reverse=True)
+    scale_defaults_files_sorted = sorted(scale_defaults_files, key=lambda x: len(x.split("_")), reverse=True)
 
     for file in scale_defaults_files_sorted:
-        filename_parts = file.split(".")[0].split("-")
+        filename_parts = file.split(".")[0].split("_")
 
-        if len(filename_parts) == 3:
+        if len(filename_parts) == 4:
             # An instrument and site is specified
-            _, file_inst, file_site = filename_parts
+            _, _, file_inst, file_site = filename_parts
             if file_inst.lower() == instrument.lower() and file_site.lower() == site.lower():
-                scale_defaults = "defaults-" + file_inst + "-" + file_site
+                scale_defaults = "defaults_" + file_inst + "_" + file_site
                 break
-        elif len(filename_parts) == 2:
-            file_inst = filename_parts[1]
+        elif len(filename_parts) == 3:
+            file_inst = filename_parts[2]
             if file_inst.lower() == instrument.lower():
-                scale_defaults = "defaults-" + file_inst
+                scale_defaults = "defaults_" + file_inst
                 break
     
     return scale_defaults

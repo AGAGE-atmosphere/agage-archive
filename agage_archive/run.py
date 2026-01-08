@@ -326,7 +326,8 @@ def run_combined_site(site, species, network,
             if verbose:
                 print(f"... combining datasets for {sp} at {site}")
             ds = combine_datasets(network, sp, site,
-                                verbose=verbose, resample=resample)
+                                  scale=choose_scale_defaults_file(network, "combined", site=site),
+                                  verbose=verbose, resample=resample)
 
             if baseline:
                 if verbose:
