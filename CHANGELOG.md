@@ -5,6 +5,12 @@ Notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-01-08
+
+### Changed
+- The delimeters in the filename for scale default files has been changed from a hyphen (-) to an underscore (_). So files should be named like: `scale_defaults_INSTRUMENT{_SITE}.csv` instead of `scale_defaults-INSTRUMENT{-SITE}.csv`. This is because some instrument names contain hyphens which caused issues when parsing the filenames.
+
+
 ## [0.2] - 2025-07-28
 
 ### Added
