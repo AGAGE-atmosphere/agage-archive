@@ -1,14 +1,14 @@
 [project]
 name = "agage_archive"
-version = "0.1"
+version = "0.2.1"
 description = "AGAGE archive code"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {text = "MIT License"}
 
 [project.urls]
-"Homepage" = "https://github.com/mrghg/agage-archive"
-"Bug Tracker" = "https://github.com/mrghg/agage-archive/issues"
+"Homepage" = "https://github.com/AGAGE-atmosphere/agage-archive"
+"Bug Tracker" = "https://github.com/AGAGE-atmosphere/agage-archive/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]
