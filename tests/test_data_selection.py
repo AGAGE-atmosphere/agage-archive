@@ -11,7 +11,7 @@ def test_choose_scale_defaults_file():
     """ Test the choose_scale_defaults_file function """
 
     # Test with instrument and site
-    # Note that the test file is called "scale_defaults-test-cgo.csv"
+    # Note that the test file is called "scale_defaults_test_cgo.csv"
     assert choose_scale_defaults_file("agage_test", "test", site="CGO") == "defaults_test_cgo"
 
     # Test with instrument only: should return the defaults file for that instrument, since this file isn't there
