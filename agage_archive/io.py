@@ -1145,22 +1145,6 @@ def combine_datasets(network, species, site,
                            resample=resample,
                            dropna=dropna)
 
-        # if instrument in ["ALE", "GAGE"]:
-        #     ds = read_ale_gage(network, species, site, instrument,
-        #                        verbose=verbose,
-        #                        scale=scale)
-        # elif instrument == "GCMS-Magnum":
-        #     ds = read_gcms_magnum(network, species, site, instrument,
-        #                         verbose=verbose,
-        #                         scale = scale,
-        #                         resample = False,
-        #                         dropna = dropna)
-        # else:
-        #     ds = read_nc(network, species, site, instrument,
-        #                 verbose=verbose,
-        #                 scale=scale,
-        #                 resample = resample)
-
         # Run data_exclude again, to remove any data that should be excluded for the combined dataset
         ds = read_data_exclude(ds, format_species(species), site, instrument,
                                combined=True)
@@ -1283,6 +1267,10 @@ def combine_baseline(network, species, site,
                            verbose=verbose,
                            flag_name="git_pollution_flag",
                            dropna=dropna)
+
+        # Run data_exclude again, to remove any data that should be excluded for the combined dataset
+        ds = read_data_exclude(ds, format_species(species), site, instrument,
+                               combined=True)
 
         # Subset date
         ds = ds.sel(time=slice(*date))
