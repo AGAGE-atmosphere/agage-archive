@@ -1120,68 +1120,39 @@ def combine_datasets(network, species, site,
         xr.Dataset: Dataset containing data
     '''
 
-    # Read instrument dates from CSV files
-    instruments = read_data_combination(network, format_species(species), site)
+    def dataset_reader(instrument):
+        read_function = get_data_read_function(network, instrument)
+        return read_function(network, species, site, instrument,
+                             verbose=verbose,
+                             scale=scale,
+                             resample=resample,
+                             dropna=dropna)
 
-    instrument_types, instrument_number_str = instrument_type_definition(network)
+    datasets = _read_combined_instrument_datasets(network,
+                                                  species,
+                                                  site,
+                                                  dataset_reader)
 
-    # Combine datasets
     dss = []
     comments = []
-    attrs = []
     instrument_rec = []
-    dates_rec = []
     networks = []
     scales = []
 
-    for instrument, date in instruments.items():
-
-        # Read data
-        read_function = get_data_read_function(network, instrument)
-
-        ds = read_function(network, species, site, instrument,
-                           verbose=verbose,
-                           scale=scale,
-                           resample=resample,
-                           dropna=dropna)
-
-        # Run data_exclude again, to remove any data that should be excluded for the combined dataset
-        ds = read_data_exclude(ds, format_species(species), site, instrument,
-                               combined=True)
-
-        # Store attributes
-        attrs.append(ds.attrs)
-
-        # Store comments
+    for instrument, ds in datasets.items():
         comments.append(ds.attrs["comment"])
-
-        # Store network
         networks.append(ds.attrs["network"])
-
-        # Subset date
-        ds = ds.sel(time=slice(*date))
-
-        if len(ds.time) == 0:
-            raise ValueError(f"No data retained for {species} {site} {instrument}. " + \
-                             "Check dates in data_combination or omit this instrument.")
-        dates_rec.append(ds.time[0].dt.strftime("%Y-%m-%d").values)
-
-        # Store instrument info and make sure the instrument_date is the same as in the filtered file
         instrument_rec.append({key:value for key, value in ds.attrs.items() if "instrument" in key})
 
         # If variable mf_count is not present, add it (1 measurement per time point)
         if "mf_count" not in ds:
             ds["mf_count"] = xr.DataArray(np.ones(len(ds.time)).astype(int),
                                         dims="time", coords={"time": ds.time})
-            # Set to zero if mf is NaN
-            #ds["mf_count"].values[np.isnan(ds.mf.values)] = 0
             ds["mf_count"].attrs = {"long_name": "Number of data points in mean",
                                     "units": ""}
 
-        # Record scale
         scales.append(ds.attrs["calibration_scale"])
 
-        # Check if instrument_type is defined. Error if not
         if "instrument_type" not in ds.variables:
             raise ValueError(f"Instrument type {ds.instrument_type} not found in instrument_type_definition.json")
 
@@ -1190,7 +1161,7 @@ def combine_datasets(network, species, site,
     # Check that we don't have different scales
     if len(set(scales)) > 1:
         error_message = "Can't combine scales that do not match. Either specify a scale, or add to scale_defaults.csv. "
-        for instrument, sc in zip(instruments.keys(), scales):
+        for instrument, sc in zip(datasets.keys(), scales):
             error_message += f"{instrument}:{sc}, " 
         raise ValueError(error_message)
 
@@ -1238,9 +1209,45 @@ def combine_datasets(network, species, site,
     return ds_combined
 
 
+def _read_combined_instrument_datasets(network, species, site, dataset_reader):
+    """Read and filter per-instrument datasets used by combined products.
+
+    This applies the shared combined-data selection rules: the combined-only
+    exclusions and the instrument date windows from data_combination.
+
+    Args:
+        network (str): Network.
+        species (str): Species.
+        site (str): Site code.
+        dataset_reader (Callable[[str], xr.Dataset]): Function that reads one
+            instrument dataset.
+
+    Returns:
+        dict[str, xr.Dataset]: Filtered datasets keyed by instrument name.
+    """
+
+    instruments = read_data_combination(network, format_species(species), site)
+    datasets = {}
+
+    for instrument, date in instruments.items():
+        ds = dataset_reader(instrument)
+        ds = read_data_exclude(ds, format_species(species), site, instrument,
+                               combined=True)
+        ds = ds.sel(time=slice(*date))
+
+        if len(ds.time) == 0:
+            raise ValueError(f"No data retained for {species} {site} {instrument}. " + \
+                             "Check dates in data_combination or omit this instrument.")
+
+        datasets[instrument] = ds
+
+    return datasets
+
+
 def combine_baseline(network, species, site,
                      verbose = True,
-                     dropna = True):
+                     dropna = True,
+                     reference_dataset = None):
     '''Combine ALE/GAGE/AGAGE baseline datasets for a given species and site
 
     Args:
@@ -1248,49 +1255,66 @@ def combine_baseline(network, species, site,
         species (str): Species
         site (str): Site
         verbose (bool, optional): Print verbose output. Defaults to False.
-        dropna (bool, optional): Drop all time points where mf is NaN. Default to
+        dropna (bool, optional): Drop all time points where mf is NaN. Default to True.
+        reference_dataset (xr.Dataset, optional): Combined mole fraction dataset to
+            use as the instrument/time reference when selecting baseline flags.
+            If None, combine_datasets is called internally.
 
     Returns:
         xr.Dataset: Dataset containing data
     '''
 
-    # Read instrument dates from CSV files
-    instruments = read_data_combination(network, format_species(species), site)
-
-    # Combine datasets
-    dss = []
-
-    for instrument, date in instruments.items():
-
-        # Read baseline. Only git_pollution_flag is available for ALE/GAGE data
+    def baseline_reader(instrument):
         ds = read_baseline(network, species, site, instrument,
                            verbose=verbose,
                            flag_name="git_pollution_flag",
                            dropna=dropna)
+        return define_instrument_type(ds, instrument)
 
-        # Run data_exclude again, to remove any data that should be excluded for the combined dataset
-        ds = read_data_exclude(ds, format_species(species), site, instrument,
-                               combined=True)
+    datasets = _read_combined_instrument_datasets(network,
+                                                  species,
+                                                  site,
+                                                  baseline_reader)
+    dss = list(datasets.values())
 
-        # Subset date
-        ds = ds.sel(time=slice(*date))
+    ds_candidates = xr.concat(dss, dim="time", combine_attrs="override")
+    ds_candidates = ds_candidates.sortby("time")
 
-        if len(ds.time) == 0:
-            raise ValueError(f"No data retained for {species} {site} {instrument}. " + \
-                             "Check dates in data_combination or omit this instrument.")
+    if reference_dataset is None:
+        reference_dataset = combine_datasets(network,
+                                             species,
+                                             site,
+                                             verbose=verbose,
+                                             dropna=dropna)
 
-        dss.append(ds)
+    if "instrument_type" not in reference_dataset.variables:
+        raise ValueError("reference_dataset must contain instrument_type to align baseline flags")
 
-    ds_combined = xr.concat(dss, dim="time")
+    candidate_index = pd.MultiIndex.from_arrays(
+        [ds_candidates.time.values, ds_candidates.instrument_type.values],
+        names=["time", "instrument_type"]
+    )
+    baseline_lookup = pd.Series(ds_candidates.baseline.values, index=candidate_index)
+    baseline_lookup = baseline_lookup[~baseline_lookup.index.duplicated(keep="first")]
 
-    # Sort by time
-    ds_combined = ds_combined.sortby("time")
+    reference_index = pd.MultiIndex.from_arrays(
+        [reference_dataset.time.values, reference_dataset.instrument_type.values],
+        names=["time", "instrument_type"]
+    )
+    baseline_aligned = baseline_lookup.reindex(reference_index)
 
-    # Remove duplicates
-    # There's a danger that this is removing different points to the mole fraction dataset
-    # but we don't have access to the instrument type. Impact should be minimal
-    if len(ds_combined.time) != len(ds_combined.time.drop_duplicates(dim="time")):
-        ds_combined = ds_combined.drop_duplicates(dim="time")
+    if baseline_aligned.isna().any():
+        n_missing = int(baseline_aligned.isna().sum())
+        raise ValueError(f"Missing baseline flags for {n_missing} combined data points")
+
+    ds_combined = xr.Dataset(
+        data_vars={"baseline": ("time", baseline_aligned.astype(np.int8).to_numpy())},
+        coords={"time": reference_dataset.time.values},
+    )
+
+    ds_combined["time"].attrs = reference_dataset.time.attrs.copy()
+    ds_combined["baseline"].attrs = ds_candidates.baseline.attrs.copy()
+    ds_combined.attrs = dss[0].attrs.copy()
 
     # Global attributes
     ds_combined.attrs["instrument_selection"] = instrument_selection_text

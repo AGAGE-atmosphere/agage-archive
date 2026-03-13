@@ -9,6 +9,7 @@ from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_p
     read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
+from agage_archive.data_selection import read_data_combination
 from agage_archive.definitions import nc4_types
 
 
@@ -158,6 +159,34 @@ def test_combine_baseline():
     # Check that ds_baseline has the same timestamps as the output of combine_datasets
     ds = combine_datasets("agage_test", "CH3CCl3", "CGO", verbose=False)
     assert (ds_baseline.time.values == ds.time.values).all()
+
+    # Check that baseline values are selected from the same instrument as combined data
+    instruments = read_data_combination("agage_test", "ch3ccl3", "CGO")
+    baseline_dss = []
+    for instrument, date in instruments.items():
+        ds_instrument = read_baseline("agage_test", "CH3CCl3", "CGO", instrument,
+                                      flag_name="git_pollution_flag", verbose=False)
+        ds_instrument = define_instrument_type(ds_instrument, instrument)
+        ds_instrument = ds_instrument.sel(time=slice(*date))
+        baseline_dss.append(ds_instrument[["baseline", "instrument_type"]])
+
+    ds_candidates = xr.concat(baseline_dss, dim="time").sortby("time")
+
+    candidate_df = pd.DataFrame({
+        "time": ds_candidates.time.values,
+        "instrument_type": ds_candidates.instrument_type.values,
+        "baseline_expected": ds_candidates.baseline.values,
+    }).drop_duplicates(subset=["time", "instrument_type"], keep="first")
+
+    combined_df = pd.DataFrame({
+        "time": ds.time.values,
+        "instrument_type": ds.instrument_type.values,
+        "baseline_combined": ds_baseline.baseline.values,
+    })
+
+    merged_df = combined_df.merge(candidate_df, how="left", on=["time", "instrument_type"])
+    assert merged_df.baseline_expected.notnull().all()
+    assert (merged_df.baseline_combined.astype(np.int8) == merged_df.baseline_expected.astype(np.int8)).all()
 
     # Test that a version number has been added
     assert "version" in ds_baseline.attrs.keys()
