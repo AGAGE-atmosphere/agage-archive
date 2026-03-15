@@ -334,7 +334,8 @@ def run_combined_site(site, species, network,
                     print(f"... combining baselines for {sp} at {site}")
                 # Note that GIT baselines is hard-wired here because Met Office not available for ALE/GAGE
                 ds_baseline = combine_baseline(network, sp, site,
-                                            verbose=verbose)
+                                            verbose=verbose,
+                                            reference_dataset=ds)
 
             else:
                 ds_baseline = None
