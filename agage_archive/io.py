@@ -968,6 +968,51 @@ def read_gcms_magnum(network, species,
         return ds
 
 
+def _merge_duplicate_flask_measurements(ds):
+    """Merge duplicate flask sampling times after checking replicate agreement.
+
+    Duplicate groups are retained only when the replicate range is less than or
+    equal to twice the mean reported standard deviation for that sampling time.
+    Remaining groups are averaged to a single sample.
+
+    Args:
+        ds (xr.Dataset): Flask dataset with time coordinate and mf values.
+
+    Returns:
+        xr.Dataset: Dataset with suspect duplicate groups removed and the rest
+            averaged by sampling time.
+    """
+
+    if len(ds.time) == len(ds.time.drop_duplicates(dim="time")):
+        return ds
+
+    mf_by_time = ds.mf.to_series().groupby("time")
+    mf_range = mf_by_time.apply(
+        lambda x: x.dropna().max() - x.dropna().min() if len(x.dropna()) > 0 else np.nan
+    )
+
+    if "mf_repeatability" in ds:
+        mean_std = ds.mf_repeatability.to_series().groupby("time").apply(
+            lambda x: x.dropna().mean()
+        )
+        keep_times = mf_range.index[
+            (mf_range <= 2 * mean_std) | mf_range.isna() | mean_std.isna()
+        ]
+        keep_mask = ds.time.isin(keep_times.to_numpy())
+        ds = ds.isel(time=keep_mask)
+
+    mf_count = ds.mf.to_series().groupby("time").apply(lambda x: x.dropna().count())
+    mf_std = ds.mf.to_series().groupby("time").apply(
+        lambda x: x.dropna().std() if len(x.dropna()) > 1 else 0.
+    )
+
+    ds = ds.groupby("time").mean(skipna=True, keep_attrs=True)
+    ds["mf_count"] = mf_count.astype(np.int32)
+    ds["mf_std"] = mf_std
+
+    return ds
+
+
 def read_gcwerks_flask(network, species, site, instrument,
                        verbose = True,
                        data_exclude = True,
@@ -1044,18 +1089,9 @@ def read_gcwerks_flask(network, species, site, instrument,
     # Sort by sampling time
     ds = ds.sortby("time")
 
-    # Find duplicate timestamps and average those points
-    if len(ds.time) != len(ds.time.drop_duplicates(dim="time")):
-        # For mf_count, just sum, otherwise average, if mf isn't NaN
-        mf_count = ds.mf.to_series().groupby("time").apply(lambda x: x.dropna().count())
-
-        # If there are more than two points at the same time, calculate a standard deviation. Otherwise, set to 0
-        mf_std = ds.mf.to_series().groupby("time").apply(lambda x: x.dropna().std() if len(x.dropna()) > 2 else 0.)
-
-        # Average other variables
-        ds = ds.groupby("time").mean(skipna=True)
-        ds["mf_count"] = mf_count
-        ds["mf_std"] = mf_std
+    # For duplicate sampling times, reject groups with poor replicate agreement
+    # and average the remaining replicate samples
+    ds = _merge_duplicate_flask_measurements(ds)
 
     # Get cal scale from scale_defaults file
     # TODO: THIS IS DANGEROUS, but there's currently no way to specify a scale for flask data
