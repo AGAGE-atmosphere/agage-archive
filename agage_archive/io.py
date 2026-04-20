@@ -968,19 +968,22 @@ def read_gcms_magnum(network, species,
         return ds
 
 
-def _merge_duplicate_flask_measurements(ds):
-    """Merge duplicate flask sampling times after checking replicate agreement.
+def _merge_duplicate_flask_measurements(ds, flask_pair_agreement = False):
+    """Merge duplicate flask sampling times, optionally checking pair agreement.
 
-    Duplicate groups are retained only when the replicate range is less than or
-    equal to twice the mean reported standard deviation for that sampling time.
-    Remaining groups are averaged to a single sample.
+    Duplicate groups are always averaged to a single sample. If
+    flask_pair_agreement is enabled, groups are first retained only when the
+    sample pair agreement is within twice the mean reported standard deviation
+    for that sampling time.
 
     Args:
         ds (xr.Dataset): Flask dataset with time coordinate and mf values.
+        flask_pair_agreement (bool, optional): Whether to reject duplicate
+            sampling times with poor pair agreement before averaging.
+            Defaults to False.
 
     Returns:
-        xr.Dataset: Dataset with suspect duplicate groups removed and the rest
-            averaged by sampling time.
+        xr.Dataset: Dataset with duplicate sampling times merged.
     """
 
     if len(ds.time) == len(ds.time.drop_duplicates(dim="time")):
@@ -991,7 +994,7 @@ def _merge_duplicate_flask_measurements(ds):
         lambda x: x.dropna().max() - x.dropna().min() if len(x.dropna()) > 0 else np.nan
     )
 
-    if "mf_repeatability" in ds:
+    if flask_pair_agreement and "mf_repeatability" in ds:
         mean_std = ds.mf_repeatability.to_series().groupby("time").apply(
             lambda x: x.dropna().mean()
         )
@@ -1018,7 +1021,8 @@ def read_gcwerks_flask(network, species, site, instrument,
                        data_exclude = True,
                        dropna=True,
                        resample = False,
-                       scale = "defaults"):
+                       scale = "defaults",
+                       flask_pair_agreement = False):
     '''Read GCWerks flask data
 
     Args:
@@ -1031,6 +1035,9 @@ def read_gcwerks_flask(network, species, site, instrument,
         dropna (bool, optional): Drop NaN values. Default to True.
         resample (bool, optional): Dummy kwarg, needed for consistency with other functions. Default to False.
         scale (str, optional): Scale to convert to - currently only accepts "defaults", which will read scale_defaults file.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            check to duplicate sampling times before averaging. Defaults to
+            False.
 
     Returns:
         xr.Dataset: Dataset containing data
@@ -1089,9 +1096,10 @@ def read_gcwerks_flask(network, species, site, instrument,
     # Sort by sampling time
     ds = ds.sortby("time")
 
-    # For duplicate sampling times, reject groups with poor replicate agreement
-    # and average the remaining replicate samples
-    ds = _merge_duplicate_flask_measurements(ds)
+    # Merge duplicate sampling times, optionally rejecting poor flask pair
+    # agreement before averaging
+    ds = _merge_duplicate_flask_measurements(ds,
+                                            flask_pair_agreement=flask_pair_agreement)
 
     # Get cal scale from scale_defaults file
     # TODO: THIS IS DANGEROUS, but there's currently no way to specify a scale for flask data
@@ -1139,7 +1147,8 @@ def combine_datasets(network, species, site,
                     scale = "defaults",
                     verbose = True,
                     resample = True,
-                    dropna = True):
+                    dropna = True,
+                    flask_pair_agreement = False):
     '''Combine ALE/GAGE/AGAGE datasets for a given species and site
 
     Args:
@@ -1151,6 +1160,8 @@ def combine_datasets(network, species, site,
         verbose (bool, optional): Print verbose output. Defaults to False.
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         dropna (bool, optional): Drop NaN values. Defaults to True.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            screen when reading flask datasets. Defaults to False.
 
     Returns:
         xr.Dataset: Dataset containing data
@@ -1158,11 +1169,13 @@ def combine_datasets(network, species, site,
 
     def dataset_reader(instrument):
         read_function = get_data_read_function(network, instrument)
-        return read_function(network, species, site, instrument,
-                             verbose=verbose,
-                             scale=scale,
-                             resample=resample,
-                             dropna=dropna)
+        kwargs = dict(verbose=verbose,
+                      scale=scale,
+                      resample=resample,
+                      dropna=dropna)
+        if read_function.__name__ == "read_gcwerks_flask":
+            kwargs["flask_pair_agreement"] = flask_pair_agreement
+        return read_function(network, species, site, instrument, **kwargs)
 
     datasets = _read_combined_instrument_datasets(network,
                                                   species,

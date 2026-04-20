@@ -72,7 +72,8 @@ def run_individual_site(site, species, network, instrument,
                         monthly=False,
                         verbose=False,
                         resample=True,
-                        top_level_only=False):
+                        top_level_only=False,
+                        flask_pair_agreement=False):
     """Process individual data files for a given site.
     Reads the release schedule for the site
 
@@ -93,6 +94,8 @@ def run_individual_site(site, species, network, instrument,
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory, 
             and ignore the individual instrument folder. Default to False.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            screen when reading flask datasets. Default to False.
     """
 
     if read_function.__name__ == "read_gcwerks_flask":
@@ -108,10 +111,13 @@ def run_individual_site(site, species, network, instrument,
 
         if rs.loc[species, site].lower() != "x":
 
-            ds = read_function(network, species, site, instrument,
-                            verbose=verbose,
-                            resample=resample,
-                            scale=choose_scale_defaults_file(network, instrument, site=site))
+            read_kwargs = dict(verbose=verbose,
+                               resample=resample,
+                               scale=choose_scale_defaults_file(network, instrument, site=site))
+            if read_function.__name__ == "read_gcwerks_flask":
+                read_kwargs["flask_pair_agreement"] = flask_pair_agreement
+
+            ds = read_function(network, species, site, instrument, **read_kwargs)
 
             if baseline:
                 ds_baseline = read_baseline_function(network, species, site, instrument,
@@ -213,7 +219,8 @@ def run_individual_instrument(network, instrument,
                               species = [],
                               sites = [],
                               resample=True,
-                              top_level_only=False):
+                              top_level_only=False,
+                              flask_pair_agreement=False):
     """Process individual data files for a given instrument.
     Reads the release schedule for the instrument
 
@@ -227,6 +234,8 @@ def run_individual_instrument(network, instrument,
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
             and ignore the individual instrument folder. Default to False.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            screen when reading flask datasets. Default to False.
     """
     
     rs = read_release_schedule(network, instrument)
@@ -260,7 +269,8 @@ def run_individual_instrument(network, instrument,
                     print(f"Processing {sp} at {site} for {instrument}")
                 result = run_individual_site(site, sp, network, instrument,
                                             rs, read_function, read_baseline_function, instrument_out,
-                                            baseline, monthly, verbose, resample, top_level_only)
+                                            baseline, monthly, verbose, resample, top_level_only,
+                                            flask_pair_agreement)
                 error_log.append(result)
 
     has_errors = any([error[2] for error in error_log])
@@ -279,7 +289,8 @@ def run_combined_site(site, species, network,
                     baseline=False,
                     monthly=False,
                     verbose=False,
-                    resample=True):
+                    resample=True,
+                    flask_pair_agreement=False):
     """Process combined data files for a given site.
     Reads the data selection file to determine which species to process
 
@@ -291,6 +302,8 @@ def run_combined_site(site, species, network,
         monthly (bool): Produce monthly baseline files
         verbose (bool): Print progress to screen
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            screen when reading flask datasets. Default to False.
     """
 
     print(f"Processing files for {site}")
@@ -327,7 +340,8 @@ def run_combined_site(site, species, network,
                 print(f"... combining datasets for {sp} at {site}")
             ds = combine_datasets(network, sp, site,
                                   scale=choose_scale_defaults_file(network, "combined", site=site),
-                                  verbose=verbose, resample=resample)
+                                  verbose=verbose, resample=resample,
+                                  flask_pair_agreement=flask_pair_agreement)
 
             if baseline:
                 if verbose:
@@ -388,7 +402,8 @@ def run_combined_instruments(network,
                              verbose = False,
                              species = [],
                              sites = [],
-                             resample=True):
+                             resample=True,
+                             flask_pair_agreement=False):
     """Process combined data files for a given network.
     Reads the data selection file to determine which sites to process
 
@@ -399,6 +414,8 @@ def run_combined_instruments(network,
         verbose (bool): Print progress to screen
         species (list): List of species to process. If empty, process all species
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
+        flask_pair_agreement (bool, optional): Apply the flask pair-agreement
+            screen when reading flask datasets. Default to False.
     """
 
     if not isinstance(species, list):
@@ -420,7 +437,8 @@ def run_combined_instruments(network,
     error_log = []
 
     for site in tqdm(sites):
-        result = run_combined_site(site, species, network, baseline, monthly, verbose, resample)
+        result = run_combined_site(site, species, network, baseline, monthly,
+                                   verbose, resample, flask_pair_agreement)
         error_log.extend(result)
 
     has_errors = any([error[2] for error in error_log])
@@ -445,7 +463,8 @@ def run_all(network,
             species = [],
             sites = [],
             resample=True,
-            top_level_only=False,):
+            top_level_only=False,
+            flask_pair_agreement=False):
     """Process data files for multiple instruments. Reads the release schedule to determine which
     instruments to process
 
@@ -493,6 +512,9 @@ def run_all(network,
     if not isinstance(sites, list):
         raise TypeError("sites must be a list")
 
+    if not isinstance(flask_pair_agreement, bool):
+        raise TypeError("flask_pair_agreement must be a boolean")
+
     path = Paths(network, errors="ignore")
 
     # Delete log files, if they exist
@@ -521,7 +543,8 @@ def run_all(network,
         run_combined_instruments(network,
                                 baseline=baseline, verbose=True,
                                 monthly=monthly, species=species, sites=sites,
-                                resample=resample)
+                                resample=resample,
+                                flask_pair_agreement=flask_pair_agreement)
 
     # If include is empty, process all instruments in release schedule
     if len(instrument_include) == 0:
@@ -542,7 +565,8 @@ def run_all(network,
             run_individual_instrument(network, instrument, 
                                     baseline=baseline_flag, verbose=True,
                                     monthly=monthly, species=species, sites=sites,
-                                    resample=resample, top_level_only=top_level_only)
+                                    resample=resample, top_level_only=top_level_only,
+                                    flask_pair_agreement=flask_pair_agreement)
 
     # Incorporate README and CHANGELOG into output directory or zip file
     try:

@@ -337,12 +337,17 @@ def test_merge_duplicate_flask_measurements():
         coords={"time": time},
     )
 
-    ds_out = _merge_duplicate_flask_measurements(ds)
+    ds_default = _merge_duplicate_flask_measurements(ds)
+    ds_filtered = _merge_duplicate_flask_measurements(ds, flask_pair_agreement=True)
 
-    assert len(ds_out.time) == 2
-    assert pd.Timestamp("2023-01-01 01:00") not in ds_out.time.values
-    assert np.isclose(ds_out.mf.sel(time="2023-01-01 00:00").values, 10.1)
-    assert ds_out.mf_count.sel(time="2023-01-01 00:00").values == 2
+    assert len(ds_default.time) == 3
+    assert pd.Timestamp("2023-01-01 01:00") in ds_default.time.values
+    assert np.isclose(ds_default.mf.sel(time="2023-01-01 01:00").values, 22.5)
+
+    assert len(ds_filtered.time) == 2
+    assert pd.Timestamp("2023-01-01 01:00") not in ds_filtered.time.values
+    assert np.isclose(ds_filtered.mf.sel(time="2023-01-01 00:00").values, 10.1)
+    assert ds_filtered.mf_count.sel(time="2023-01-01 00:00").values == 2
 
 
 def test_drop_duplicates():
