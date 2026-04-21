@@ -324,9 +324,9 @@ def test_read_gcwerks_flask():
     # Both should have the same species and attributes
     assert ds_default.attrs["species"] == ds_filtered.attrs["species"] == "cf4"
     
-    # The filtered version may have fewer or equal data points depending on
-    # the quality of flask pair agreement in the test data
-    assert len(ds_filtered.time) <= len(ds_default.time)
+    # One data point should be removed when flask_pair_agreement is True
+    # (one "bad" duplicate point was added to the test dataset)
+    assert len(ds_filtered.time) == len(ds_default.time) - 1
 
 
 def test_merge_duplicate_flask_measurements():
