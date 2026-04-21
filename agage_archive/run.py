@@ -480,6 +480,8 @@ def run_all(network,
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
             and ignore the individual instrument folder. Default to False.
+        flask_pair_agreement (bool, optional): Only accept data points where paired flask measurements agree within 2-sigma. 
+            Default to False.
     """
 
     if not network:
