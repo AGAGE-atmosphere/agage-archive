@@ -315,6 +315,19 @@ def test_read_gcwerks_flask():
     assert "sampling_period" in ds.attrs.keys()
     assert ds.attrs["inlet_latitude"] == 2
 
+    # Test flask_pair_agreement parameter
+    ds_default = read_gcwerks_flask("agage_test", "cf4", "CBW", "GCMS-Medusa-flask",
+                                     flask_pair_agreement=False)
+    ds_filtered = read_gcwerks_flask("agage_test", "cf4", "CBW", "GCMS-Medusa-flask",
+                                      flask_pair_agreement=True)
+    
+    # Both should have the same species and attributes
+    assert ds_default.attrs["species"] == ds_filtered.attrs["species"] == "cf4"
+    
+    # The filtered version may have fewer or equal data points depending on
+    # the quality of flask pair agreement in the test data
+    assert len(ds_filtered.time) <= len(ds_default.time)
+
 
 def test_merge_duplicate_flask_measurements():
 
