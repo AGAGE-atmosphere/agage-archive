@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- An option has been added to the run functions to apply a filter to paired flask measurements. If ` flask_pair_agreement=True` is passed, pairs of measurements made at the same time will filtered out if the pair difference is greater than twice the instrument precision (estimated as the `std_stdev`, the daily standard deviation of the measured standards). This is only relevant when processing flask measurements. 
+- An option has been added to the run functions to apply a filter to paired flask measurements. If ` flask_pair_agreement=True` is passed, pairs of measurements made at the same time will be filtered out if the pair difference is greater than twice the instrument precision (estimated as the `std_stdev`, the daily standard deviation of the measured standards). This is only relevant when processing flask measurements. 
 
 
 ## [0.2.1] - 2026-01-08
