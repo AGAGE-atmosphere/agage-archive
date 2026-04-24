@@ -6,7 +6,8 @@ import json
 from agage_archive.config import Paths, open_data_file
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
-    read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function
+    read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function, \
+    _merge_duplicate_flask_measurements
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
 from agage_archive.data_selection import read_data_combination
@@ -313,6 +314,53 @@ def test_read_gcwerks_flask():
     # Check that some attributes that are only in site attributes have been added
     assert "sampling_period" in ds.attrs.keys()
     assert ds.attrs["inlet_latitude"] == 2
+
+    # Test flask_pair_agreement parameter
+    ds_default = read_gcwerks_flask("agage_test", "cf4", "CBW", "GCMS-Medusa-flask",
+                                     flask_pair_agreement=False)
+    ds_filtered = read_gcwerks_flask("agage_test", "cf4", "CBW", "GCMS-Medusa-flask",
+                                      flask_pair_agreement=True)
+    
+    # Both should have the same species and attributes
+    assert ds_default.attrs["species"] == ds_filtered.attrs["species"] == "cf4"
+    
+    # One data point should be removed when flask_pair_agreement is True
+    # (one "bad" duplicate point was added to the test dataset)
+    assert len(ds_filtered.time) == len(ds_default.time) - 1
+
+
+def test_merge_duplicate_flask_measurements():
+
+    time = pd.to_datetime([
+        "2023-01-01 00:00",
+        "2023-01-01 00:00",
+        "2023-01-01 01:00",
+        "2023-01-01 01:00",
+        "2023-01-01 02:00",
+    ])
+
+    ds = xr.Dataset(
+        data_vars={
+            "mf": ("time", [10.0, 10.2, 20.0, 25.0, 30.0]),
+            "mf_repeatability": ("time", [0.2, 0.2, 1.0, 1.0, 0.5]),
+            "inlet_height": ("time", [10, 10, 10, 10, 10]),
+            "sampling_period": ("time", [1800, 1800, 1800, 1800, 1800]),
+            "mf_count": ("time", [1, 1, 1, 1, 1]),
+        },
+        coords={"time": time},
+    )
+
+    ds_default = _merge_duplicate_flask_measurements(ds)
+    ds_filtered = _merge_duplicate_flask_measurements(ds, flask_pair_agreement=True)
+
+    assert len(ds_default.time) == 3
+    assert pd.Timestamp("2023-01-01 01:00") in ds_default.time.values
+    assert np.isclose(ds_default.mf.sel(time="2023-01-01 01:00").values, 22.5)
+
+    assert len(ds_filtered.time) == 2
+    assert pd.Timestamp("2023-01-01 01:00") not in ds_filtered.time.values
+    assert np.isclose(ds_filtered.mf.sel(time="2023-01-01 00:00").values, 10.1)
+    assert ds_filtered.mf_count.sel(time="2023-01-01 00:00").values == 2
 
 
 def test_drop_duplicates():
