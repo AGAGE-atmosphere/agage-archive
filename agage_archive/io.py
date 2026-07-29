@@ -288,7 +288,10 @@ def read_nc(network, species, site, instrument,
                             instrument,
                             species=format_species(species),
                             site=site)
-    ds = ds.sel(time=slice(None, rs))
+    if pd.Index(ds.time).is_monotonic_increasing:
+        ds = ds.sel(time=slice(None, rs))
+    else:
+        ds = ds.where(ds.time <= np.datetime64(rs), drop=True)
 
     # Rename some variables, so that they can be resampled properly
     if "mf_mean_N" in ds:
@@ -303,7 +306,7 @@ def read_nc(network, species, site, instrument,
     if resample:
         ds = resample_function(ds)
 
-    # Check that time is monotonic and that there are no duplicate indices
+    # Check that time is monotonic and remove duplicate indices
     if not pd.Index(ds.time).is_monotonic_increasing:
         ds = ds.sortby("time")
     if len(ds.time) != len(ds.time.drop_duplicates(dim="time")):

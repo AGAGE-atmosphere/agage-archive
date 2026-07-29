@@ -2,7 +2,7 @@ import pandas as pd
 import xarray as xr
 import numpy as np
 import json
-from contextlib import nullcontext
+from io import BytesIO
 from unittest.mock import patch
 
 from agage_archive.config import Paths, open_data_file
@@ -222,7 +222,8 @@ def test_read_nc_sorts_non_monotonic_timestamps():
         ds_original = xr.open_dataset(f).load()
 
     shuffled = ds_original.isel(time=np.roll(np.arange(ds_original.sizes["time"]), 1))
-    with patch("agage_archive.io.open_data_file", return_value=nullcontext(shuffled)):
+    assert (shuffled.time.diff("time") < np.timedelta64(0, "ns")).any()
+    with patch("agage_archive.io.open_data_file", return_value=BytesIO(shuffled.to_netcdf())):
         ds = read_nc("agage_test", "CH3CCl3", "CGO", "GCMS-Medusa", resample=False)
 
     assert pd.Index(ds.time.values).is_monotonic_increasing
