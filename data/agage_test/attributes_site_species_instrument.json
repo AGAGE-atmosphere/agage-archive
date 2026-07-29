@@ -1,0 +1,9 @@
+{
+    "MHD": {
+        "nf3": {
+            "GCMS-Medusa": {
+                "instrument_comment": "TEST FIXTURE: this sentence is appended from attributes_site_species_instrument.json, and exists so that the site/species/instrument attribute override path is exercised by the test suite."
+            }
+        }
+    }
+}

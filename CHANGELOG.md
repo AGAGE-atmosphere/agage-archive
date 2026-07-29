@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The archive is now reproducible.** Two sources of run-to-run variation have been removed. Both could change the contents of a published archive between otherwise identical runs, so output may differ from previous versions — but it will now be the same every time.
+  - `read_data_combination` iterated `set(instruments)`, whose order depends on Python's hash seed. That order is carried through to `xr.concat` in `combine_datasets`, where `combine_attrs="override"` takes global attributes from whichever dataset happens to be first. Combined-file attributes such as `inlet_latitude`, `inlet_longitude`, `inlet_base_elevation_masl` and `inlet_comment` therefore varied between runs. Instrument order now follows the column order of the `data_combination` file, so the attributes come from the first instrument listed there.
+  - `run_all` processed instruments in filesystem glob order. Where more than one instrument is eligible to write the top-level file for a species (because the species has one or no entry in `data_combination`), the first one processed wins, so which instrument's data ended up in the top-level file was not reproducible. Instruments are now processed in sorted order. Sites are likewise sorted.
+- Processing an instrument with no baseline flags (currently `GCMS-Medusa-flask`) while `baseline=True` raised `TypeError: 'NoneType' object is not callable`, which was swallowed into `error_log_individual.txt`, so flask data produced no output at all. Baseline and monthly-baseline products are now skipped for such instruments and the mole fraction files are written as normal.
+- `run_timestamp_checks` tested an `xarray.Dataset` for truthiness, so an empty baseline dataset silently skipped the duplicate-timestamp and timestamp-alignment checks rather than failing them.
+
 ### Changed
 
+- Combined files now take their global attributes from the **most recently operating instrument**, rather than from whichever instrument happened to be first (#167). Previously these came from the first instrument listed in the `data_combination` file, which is normally the oldest, so a combined record could inherit station metadata from an instrument decommissioned decades earlier — for example Kennaook/Cape Grim `ch3ccl3` reported an empty `inlet_comment` because ALE had none, discarding the description carried by the current Medusa. Affects `inlet_latitude`, `inlet_longitude`, `inlet_base_elevation_masl` and `inlet_comment` on combined mole fraction, baseline and monthly-baseline files.
 - An option has been added to the run functions to apply a filter to paired flask measurements. If ` flask_pair_agreement=True` is passed, pairs of measurements made at the same time will be filtered out if the pair difference is greater than twice the instrument precision (estimated as the `std_stdev`, the daily standard deviation of the measured standards). This is only relevant when processing flask measurements. 
+
+### Added
+
+- A golden manifest test (`tests/test_archive.py`) that runs the full `agage_test` archive and compares every file's path, variables, dtypes, encoding, attributes and data checksum against a checked-in reference, and asserts that no errors were written to the error logs. Regenerate the reference with `AGAGE_UPDATE_MANIFEST=1 python -m pytest tests/test_archive.py` when output changes intentionally.
 
 
 ## [0.2.1] - 2026-01-08

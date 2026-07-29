@@ -6,7 +6,7 @@ structure must not change.
 
 **Branch:** `improved-tests`
 **Started:** 2026-07-28
-**Last updated:** 2026-07-28
+**Last updated:** 2026-07-29
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -43,27 +43,65 @@ Re-measure these at the end of each phase.
 
 ---
 
-## Phase 0 — Safety net (do this first)
+## Phase 0a — Fixture closure ✅ DONE (2026-07-29)
 
-Nothing else in this plan is safe without it. The constraint is "don't change the output",
-and there is currently no test that would notice if we did.
+Had to come first: the `agage_test` release schedules had **114 live cells but only 8
+input data files**, so ~90 site/species combinations failed silently into
+`error_log_individual.txt` on every run. Generating a golden manifest before fixing this
+would have frozen a ragged, half-broken archive as the reference.
 
-- [ ] **Golden archive manifest test.** Run `run_all` on `agage_test` and assert a
-      checked-in manifest: sorted list of archive paths, and for each netCDF file its
-      variable names, dtypes, `_FillValue`s, units, and global/variable attributes.
-      Exclude only `file_created`, `file_created_by`, `processing_code_version`.
-- [ ] **Run the golden test against both output modes** — directory output and `.zip`
-      output. These take different code paths through `config.py` and only the directory
-      path is currently exercised end-to-end.
-- [ ] **Assert the error logs are empty** after the golden run. `error_log_individual.txt`
-      and `error_log_combined.txt` must not exist. Without this, a swallowed exception
-      shows up as a silently smaller archive and a green test suite.
-- [ ] **`conftest.py` fixture to isolate `data/agage_test/output` per test.**
-      `test_cf_compliance` currently deletes the output tree as a side effect, making the
-      suite order-dependent.
+- [x] **Trim release schedules to match available data.** Data-less cells marked `x`
+      rather than deleted, so the files keep their shape and still exercise schedule
+      parsing (general-release-date fill, explicit per-cell dates, `x` markers,
+      whitespace stripping). ALE/GAGE/GCMD/Picarro edited; Magnum/Medusa/flask were
+      already correct.
+- [x] **Two determinism bugs fixed** (see CHANGELOG). Found by running `run_all` twice and
+      diffing manifests — the archive was not reproducible, which would have made the
+      golden test flaky:
+      - `read_data_combination` iterated `set(instruments)` → combined-file global
+        attributes varied with the Python hash seed
+      - `run_all` processed instruments in filesystem glob order → which instrument won a
+        contested top-level file varied
+- [x] **B9 fixed** — flask + `baseline=True` crashed and produced no output at all.
+- [x] **B3 fixed** — `run_timestamp_checks` used Dataset truthiness.
+- [x] **Missing fixtures added**, each unlocking a previously dead code path:
+      `README.md`/`CHANGELOG.md` in `data/agage_test/` (`copy_to_archive`);
+      `attributes_site_species_instrument.json` (the `attrs[attr] += ...` append);
+      `scale_defaults_GCMD_CGO.csv` (instrument-specific scale defaults, which now do a
+      real SIO-05 → SIO-98 conversion on the individual GCMD file while the combined
+      file stays on the network default).
+- [x] **Picarro-1/Picarro-2 assessed and dropped.** On inspection it buys almost nothing:
+      the numbered-instrument attribute path (`instrument_1` … `instrument_4`) is already
+      fully exercised by the combined CGO `ch3ccl3` file, and `get_instrument_number`
+      would take the exact-match path, not the partial match. Not worth two binary
+      fixtures plus instrument renumbering. Revisit only if the partial-match bug is
+      being fixed.
 
-**Exit criteria:** a deliberate one-character change to `data/variables.json` turns the
-suite red.
+**Result:** `run_all` on `agage_test` produces 125 netCDF files across all six directory
+kinds, writes no error log, and is byte-identical across runs and across
+`PYTHONHASHSEED` values.
+
+## Phase 0 — Safety net ✅ MOSTLY DONE (2026-07-29)
+
+- [x] **Golden archive manifest test** — `tests/test_archive.py`, reference at
+      `tests/reference/archive_manifest.json` (127 entries). Pins per-file paths,
+      variables, dtypes, encoding, variable and global attributes, `n_time`, and a data
+      checksum rounded to 6 significant figures (float32 carries ~7, so this absorbs
+      last-bit noise between library versions while still catching real changes).
+      Regenerate with `AGAGE_UPDATE_MANIFEST=1 python -m pytest tests/test_archive.py`.
+- [x] **Assert the error logs are empty** — `test_archive_has_no_errors`.
+- [x] **`conftest.py` fixture** isolating `data/agage_test/output`; `test_cf_compliance`
+      no longer deletes the output tree as a side effect.
+- [ ] **Run the golden test against zip output as well as directory output.** Still
+      outstanding — these take different code paths through `config.py` and only the
+      directory path is covered. Needs the `errors=` behaviour pinned first (T3/B4/B5),
+      since the zip path is where `data_file_path` returns `None`.
+
+**Exit criteria met:** perturbing one character of a `long_name` in `data/variables.json`
+produces 84 manifest differences and fails the suite.
+
+**Suite:** 46 passed, ~2.5 min (the archive test is ~1 min; deselect with `-m "not slow"`).
+**Coverage:** 67% → 73% overall; `run.py` 29% → 72%.
 
 ---
 
@@ -81,9 +119,8 @@ silently mis-align published data.
       `(ds_baseline.time != ds.time).any()` aligns with an inner join, so extra or missing
       baseline timestamps compare only over the intersection and the check returns `False`.
       Fix: compare lengths, then `np.array_equal` on `.values`.
-- [ ] **B3 — `if ds_baseline:` is Dataset truthiness.** [run.py:59](agage_archive/run.py#L59),
-      [run.py:64](agage_archive/run.py#L64). `bool(Dataset())` is `False`, so an empty
-      baseline dataset skips every check instead of failing. Fix: `is not None`.
+- [x] **B3 — `if ds_baseline:` is Dataset truthiness.** ✅ Fixed 2026-07-29 in
+      `run_timestamp_checks` and `run_individual_site`. Still needs a dedicated test (T2).
 - [ ] **B4 — `data_file_path` returns `None` silently.**
       [config.py:335-340](agage_archive/config.py#L335-L340). Zip + missing member +
       `errors="ignore"` returns `None`; callers fail later with an unrelated
@@ -110,10 +147,9 @@ silently mis-align published data.
       anything other than the exact string `"False"` as optional — so a missing
       `instrument_type` is silently dropped rather than raising. Covered by the Phase 3
       schema test.
-- [ ] **B9 — flask + baseline fails via the generic handler.**
-      [run.py:249-250](agage_archive/run.py#L249-L250) sets `read_baseline_function = None`
-      for `GCMS-MEDUSA-FLASK`, then [run.py:123](agage_archive/run.py#L123) calls it
-      unconditionally. Fix: explicit skip.
+- [x] **B9 — flask + baseline fails via the generic handler.** ✅ Fixed 2026-07-29.
+      Baseline and monthly products are skipped when `read_baseline_function is None`;
+      the `NotImplementedError` for "monthly without baseline" is preserved.
 - [ ] **B10 — `warnings.simplefilter` used as a global toggle.**
       [formatting.py:275-280](agage_archive/formatting.py#L275-L280) clobbers the caller's
       warning configuration and does not restore it on exception. Fix:
@@ -135,6 +171,10 @@ silently mis-align published data.
 - [ ] `if "time" in var` should be `var == "time"` — [data_selection.py:269](agage_archive/data_selection.py#L269)
 - [ ] Instrument partial-matching uses dict insertion order, not longest match —
       [definitions.py:165-170](agage_archive/definitions.py#L165-L170)
+- [ ] `choose_scale_defaults_file` breaks ties using `data_file_list` order, which is
+      filesystem glob order. Not currently triggered (only one file matches any given
+      instrument/site), but it is the same class of non-determinism fixed in Phase 0a —
+      [data_selection.py:155-171](agage_archive/data_selection.py#L155-L171)
 - [ ] `site_code` casing differs between readers: `read_nc` upper-cases
       ([io.py:261](agage_archive/io.py#L261)), `read_ale_gage`
       ([io.py:634](agage_archive/io.py#L634)) and `read_gcwerks_flask`
@@ -257,7 +297,8 @@ rebuilding.
       it, or add a second service account and that protection is gone. `.dvc/config.local`
       is in the same position for the DVC remote credentials. Suggested hook set:
       - `gitleaks` — secret scanning on staged content
-      - `check-added-large-files` — data belongs in dvc, not git
+      - `check-added-large-files` — the `agage_test` fixture is committed to git on
+        purpose, so the guard is against someone adding a *real* archive file by accident
       - `end-of-file-fixer`, `trailing-whitespace` — would have caught the missing trailing
         newline in `requirements.txt`
       - `check-json`, `check-yaml` — `data/variables.json` and the `attributes*.json` files
@@ -290,3 +331,34 @@ Record anything that changes the plan, especially anything touching output forma
 | Date | Decision |
 | --- | --- |
 | 2026-07-28 | Plan created. Output format frozen; changes require an explicit decision recorded here. |
+| 2026-07-29 | Determinism treated as a bug, not a format change: instrument order in `run_all` and `read_data_combination` now sorted / column-ordered. Combined-file global attributes may differ from previously published archives, but are now reproducible. |
+| 2026-07-29 | `agage_test` release schedules trimmed to match available input data (data-less cells marked `x`) so a full run is completely determined and error-free. Schedules now document the fixture, not the real network. |
+| 2026-07-29 | Picarro-1/Picarro-2 fixtures dropped — the code paths they would cover are already covered. |
+
+### Open questions
+
+- ~~**Which instrument should supply a combined file's global attributes?**~~ ✅ Resolved
+  2026-07-29 (#167): the most recently operating instrument, via `most_recent_dataset()`
+  in [io.py](agage_archive/io.py). Changed 3 of 127 files in the fixture archive, global
+  attributes only — no data, variable or dtype changes.
+
+- **The combined baseline-flags file misreports its provenance.** Exposed by #167 but
+  pre-existing. `combine_baseline` inherits one instrument's attributes wholesale, so the
+  combined CGO `ch3ccl3` baseline file carries `instrument: GCMS-Medusa` and
+  `instrument_type: GCMS-Medusa` even though it spans ALE+GAGE+GCMD+Medusa. The combined
+  *mole fraction* file does this correctly — `format_attributes` gives it
+  `instrument` … `instrument_4` and `instrument_type: ALE/GAGE/GCMD/GCMS-Medusa`. Before
+  #167 the baseline file said `ALE`; now it says `GCMS-Medusa`. Both are wrong. The fix is
+  to summarise instruments in `combine_baseline` the way `combine_datasets` does, but that
+  is a further output change and needs a decision.
+
+- **Should a contested top-level file warn?** "Top level" means the species directory
+  itself — `{species}/`, the recommended file — as opposed to
+  `{species}/individual-instruments/`. When a species has one or no entry in
+  `data_combination`, `run_individual_site` writes the individual instrument file into
+  `{species}/` as well, and the first instrument processed wins. Concretely in the
+  fixture: `ccl4/agage_test_cgo_ccl4_testv1.nc` contains **only ALE data** (1978–1984),
+  silently discarding the GAGE record, because ALE sorts first and `data_combination_CGO`
+  has no `ccl4` row. That is now deterministic but still invisible. Options: warn naming
+  the instruments that lost, or require an explicit `data_combination` entry whenever more
+  than one instrument measures a species at a site.

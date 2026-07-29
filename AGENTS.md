@@ -44,6 +44,25 @@ schema. Treat edits to them with the same care as edits to the output itself.
 Three attributes are expected to vary between runs and are the only ones excluded from
 output comparisons: `file_created`, `file_created_by`, `processing_code_version`.
 
+### The golden manifest is how this is enforced
+
+`tests/test_archive.py` runs the full `agage_test` archive and compares every file against
+`tests/reference/archive_manifest.json` — paths, variables, dtypes, encoding, attributes
+and a data checksum — and asserts that no errors were written to the error logs.
+
+**If that test fails, you have changed the output.** Do not regenerate the reference to
+make it pass. Read the diff, work out which change caused it, and either fix the change or
+take it to a human as described above. Regenerating is only correct once someone has
+decided the new output is right:
+
+```bash
+AGAGE_UPDATE_MANIFEST=1 python -m pytest tests/test_archive.py
+```
+
+The archive must also be **reproducible**: two runs must produce identical output. Beware
+of anything whose order depends on the filesystem or on Python's hash seed — `set()`
+iteration and unsorted `glob` results have both caused non-reproducible archives here.
+
 ## Environment
 
 Use the `agage` conda environment:
@@ -65,8 +84,13 @@ network in `data/agage_test/`.
 - **Add the test first when fixing a bug.** Several bugs in this codebase sat in
   uncovered branches (`io.py:308`, `io.py:96`). A fix without a test is likely to be
   re-broken by the next refactor.
-- **Do not commit anything under `data/`.** Data files are tracked with
-  [dvc](https://dvc.org), not git. See [docs/workflow.md](docs/workflow.md).
+- **Know what belongs in `data/`.** In *this* repository the `agage_test` fixture is
+  committed to git, small netCDF and tarball inputs included — that is deliberate, it is
+  what makes the test suite self-contained. What must never be committed is processed
+  output (`data/agage_test/output/` is gitignored) or real archive data. The downstream
+  release repositories are the ones that track their data with [dvc](https://dvc.org);
+  see [docs/workflow.md](docs/workflow.md). Keep new fixtures small, and prefer
+  generating synthetic inputs in code over adding binary files.
 - **Never commit credentials.** `agage-gdrive.json` (a Google Cloud service-account
   private key) and `.dvc/config.local` live in the working tree and are protected only by
   literal filename rules in `.gitignore`. Do not `git add -f` them, do not copy or rename

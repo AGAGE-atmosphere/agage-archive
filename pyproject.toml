@@ -17,3 +17,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: runs the full archive (~1 minute). Deselect with -m 'not slow'.",
+]
+

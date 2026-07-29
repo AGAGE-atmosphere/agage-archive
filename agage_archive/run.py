@@ -56,14 +56,15 @@ def run_timestamp_checks(ds,
 
         raise ValueError(f"Duplicate timestamps in {species} at {site}: {duplicated_str} for instrument {instrument_names}")
 
-    if ds_baseline:
-        if ds_baseline["time"].to_series().duplicated().any():
-            raise ValueError(f"Duplicate timestamps in baseline for {species} at {site}")
-    
+    if ds_baseline is None:
+        return
+
+    if ds_baseline["time"].to_series().duplicated().any():
+        raise ValueError(f"Duplicate timestamps in baseline for {species} at {site}")
+
     # check that the time stamps are the same in the data and baseline files
-    if ds_baseline:
-        if (ds_baseline.time != ds.time).any():
-            raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps")
+    if (ds_baseline.time != ds.time).any():
+        raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps")
         
 
 def run_individual_site(site, species, network, instrument,
@@ -119,7 +120,9 @@ def run_individual_site(site, species, network, instrument,
 
             ds = read_function(network, species, site, instrument, **read_kwargs)
 
-            if baseline:
+            # read_baseline_function is None for instruments that have no baseline flags
+            # (e.g. flask data), in which case baseline products are skipped
+            if baseline and read_baseline_function is not None:
                 ds_baseline = read_baseline_function(network, species, site, instrument,
                                             flag_name = baseline,
                                             verbose = verbose)
@@ -173,7 +176,7 @@ def run_individual_site(site, species, network, instrument,
                             end_date=rs.loc[species, site],
                             verbose=verbose)
 
-                if baseline:
+                if ds_baseline is not None:
                     if (ds_baseline.time != ds.time).any():
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
                     # Try-except to catch errors when baseline flags are missing, but still continue processing
@@ -195,9 +198,8 @@ def run_individual_site(site, species, network, instrument,
                                 verbose=verbose)
                     except Exception as e:
                         error_log.append(get_error(e))
-                else:
-                    if monthly:
-                        raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
+                elif monthly and not baseline:
+                    raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
 
             error_log.append("")
 
@@ -426,7 +428,7 @@ def run_combined_instruments(network,
                                 sub_path = "data_combination",
                                 pattern = f"*.csv")
     
-    sites_dc = [f.split(".")[0].split("_")[-1] for f in files]
+    sites_dc = sorted([f.split(".")[0].split("_")[-1] for f in files])
 
     if not sites:
         sites = sites_dc.copy()
@@ -553,7 +555,11 @@ def run_all(network,
         _, _, files = data_file_list(network = network,
                                     sub_path = "data_release_schedule",
                                     pattern = f"*.csv")
-        instruments = [f.split(".")[0].split("_")[-1] for f in files]
+        # Sort so that processing order doesn't depend on the order in which the
+        # filesystem happens to return the release schedule files. Where more than one
+        # instrument is eligible to write the top-level file for a species, the first
+        # one processed wins, so an unsorted list makes the archive irreproducible.
+        instruments = sorted([f.split(".")[0].split("_")[-1] for f in files])
     else:
         instruments = instrument_include
 

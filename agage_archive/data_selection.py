@@ -52,13 +52,19 @@ def read_data_combination(network, species, site,
     if len(df) > 1: 
         raise ValueError("Can only have each species appear at most once in data_selection table")
 
-    # Extract instrument names from column names
-    instruments = [col.split(" ")[0] for col in df.columns]
+    # Extract instrument names from column names.
+    # dict.fromkeys de-duplicates while preserving the column order of the
+    # data_combination file. A set was used here previously, which meant the instrument
+    # order varied between runs with Python's hash seed. That order is carried through to
+    # xr.concat in combine_datasets, where combine_attrs="override" takes the global
+    # attributes from whichever dataset happens to be first, so combined files were not
+    # reproducible.
+    instruments = list(dict.fromkeys(col.split(" ")[0] for col in df.columns))
 
     # For each instrument, find start and end dates
     instrument_dates = {}
 
-    for instrument in set(instruments):
+    for instrument in instruments:
 
         dates = df.loc[:, [f"{instrument} start", f"{instrument} end"]].values[0].astype(str)
 

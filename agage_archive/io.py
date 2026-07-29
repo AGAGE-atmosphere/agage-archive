@@ -1220,6 +1220,13 @@ def combine_datasets(network, species, site,
                             coords="all",
                             combine_attrs="override")
 
+    # combine_attrs="override" takes the global attributes from the first dataset, which
+    # is the first instrument listed in the data_combination file and so usually the
+    # oldest. Take them from the most recently operating instrument instead: station
+    # metadata such as inlet height and inlet comments is more likely to describe the
+    # current state of the site. See issue #167.
+    ds_combined.attrs = most_recent_dataset(dss).attrs.copy()
+
     # Sort by time
     ds_combined = ds_combined.sortby("time")
 
@@ -1256,6 +1263,30 @@ def combine_datasets(network, species, site,
     ds_combined.attrs["network"] = "/".join(set(networks))
 
     return ds_combined
+
+
+def most_recent_dataset(datasets):
+    """Return the dataset whose record ends latest.
+
+    Used to decide which instrument's global attributes a combined file should inherit.
+    The instrument that operated most recently is the best description of the current
+    state of the site, so its station metadata is preferred over that of an instrument
+    that was decommissioned decades ago (issue #167).
+
+    Args:
+        datasets (list[xr.Dataset]): Datasets, each with at least one time point.
+
+    Returns:
+        xr.Dataset: The dataset with the latest final timestamp.
+
+    Raises:
+        ValueError: If no datasets are given.
+    """
+
+    if not datasets:
+        raise ValueError("Need at least one dataset to find the most recent")
+
+    return max(datasets, key=lambda ds: ds.time.values[-1])
 
 
 def _read_combined_instrument_datasets(network, species, site, dataset_reader):
@@ -1363,7 +1394,9 @@ def combine_baseline(network, species, site,
 
     ds_combined["time"].attrs = reference_dataset.time.attrs.copy()
     ds_combined["baseline"].attrs = ds_candidates.baseline.attrs.copy()
-    ds_combined.attrs = dss[0].attrs.copy()
+    # Take global attributes from the most recently operating instrument, for consistency
+    # with combine_datasets (issue #167)
+    ds_combined.attrs = most_recent_dataset(dss).attrs.copy()
 
     # Global attributes
     ds_combined.attrs["instrument_selection"] = instrument_selection_text
