@@ -202,6 +202,42 @@ silently mis-align published data.
       import time and can raise on import; [line 52](agage_archive/io_other_formats.py#L52)
       uses `delim_whitespace=True`, removed in pandas 3.0. 0% coverage — decide whether to
       test it or delete it.
+- [ ] **B12 — `start_date` is too early in individual-instrument files.** *Agreed to fix
+      (2026-07-29), scheduled after the current PR.*
+
+      All four readers call `format_attributes` before removing NaN mole fractions
+      ([io.py:269](agage_archive/io.py#L269), [643](agage_archive/io.py#L643),
+      [920](agage_archive/io.py#L920), [1111](agage_archive/io.py#L1111); `dropna` at
+      [314](agage_archive/io.py#L314), [677](agage_archive/io.py#L677),
+      [950](agage_archive/io.py#L950), [1141](agage_archive/io.py#L1141)). `start_date`
+      therefore records the start of the *source record*, not of this species'
+      measurements. The error is largest for the readers whose source files are
+      multi-species — every GAGE species at CGO reports the same `1981-11-30 14:01`, and
+      every Magnum species at MHD the same `1994-10-13 23:54`, whatever the species.
+
+      | File | `start_date` | First real measurement | Error |
+      | --- | --- | --- | --- |
+      | `gage-gcmd_cgo_ch4` | 1981-11-30 14:01 | 1986-05-13 03:54 | 4.4 years |
+      | `gage-gcmd_cgo_cfc-113` | 1981-11-30 14:01 | 1982-06-01 21:08 | 6 months |
+      | `gcms-magnum_mhd_ch2cl2` | 1994-10-13 23:54 | 1995-04-06 23:56 | 6 months |
+
+      15 of 25 individual files in the fixture are affected.
+
+      Only `start_date`: `end_date` is correct because `output_dataset` recomputes it
+      ([io.py:1491](agage_archive/io.py#L1491)) whenever an end date is passed, which
+      `run_individual_site` always does. There is no equivalent for `start_date`.
+
+      Combined files are correct only incidentally — `combine_datasets` also calls
+      `format_attributes` before its own `dropna`, and gets away with it because the
+      contributing datasets were each read with `dropna=True`. With `dropna=False` they
+      would be wrong too.
+
+      **Preferred fix:** compute `start_date` and `end_date` in `output_dataset`, at write
+      time, where the dataset is definitely final — rather than patching each reader.
+      That removes the whole class of "derived attribute computed too early" rather than
+      this one instance, and subsumes the existing `end_date` special case. Changes an
+      attribute on ~618 files in the real archive. Do it alongside Phase 1b/A3, which is
+      the same underlying problem.
 
 ### Minor (batch into one commit)
 
@@ -378,6 +414,7 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | `agage_test` release schedules trimmed to match available input data (data-less cells marked `x`) so a full run is completely determined and error-free. Schedules now document the fixture, not the real network. |
 | 2026-07-29 | Picarro-1/Picarro-2 fixtures dropped — the code paths they would cover are already covered. |
 | 2026-07-29 | Combined-file global attributes now come from the most recently operating instrument (#167). Follow-on attribute work tracked as Phase 1b together with #169. |
+| 2026-07-29 | B12 (`start_date` too early in individual-instrument files) will be fixed, but not in the current PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
 ### Open questions
@@ -388,12 +425,27 @@ Record anything that changes the plan, especially anything touching output forma
 - ~~**Should a contested top-level file warn?**~~ ✅ Resolved 2026-07-29: it now raises.
   See "contested top-level files" below.
 
-- **B12 — `start_date` and `end_date` are wrong in individual-instrument files.** Found
-  2026-07-29. `format_attributes` computes them from `ds.time[0]` / `ds.time[-1]` at a
-  point in the reader where NaN mole fractions have not yet been dropped and the release
-  schedule slice has not been applied, so they describe the raw record rather than the
-  data actually in the file. GAGE `cfc-113` at CGO claims `start_date: 1981-11-30 14:01`
-  when its first real measurement is `1982-06-01 21:08` — nearly seven months out. Every
-  individual-instrument file in the fixture is affected except the flask one; combined
-  files are correct because `format_attributes` runs again after the concatenation. Fixing
-  it changes an attribute on ~618 files in the real archive, so it needs a decision.
+- ~~**B12 — `start_date` is too early in individual-instrument files.**~~ ✅ Decision taken
+  2026-07-29: this **will** be fixed, but not in the current PR — see B12 in Phase 1.
+  All four readers call `format_attributes` *before* removing NaN mole fractions
+  ([io.py:269](agage_archive/io.py#L269), [643](agage_archive/io.py#L643),
+  [920](agage_archive/io.py#L920), [1111](agage_archive/io.py#L1111), with
+  `dropna` at [314](agage_archive/io.py#L314), [677](agage_archive/io.py#L677),
+  [950](agage_archive/io.py#L950), [1141](agage_archive/io.py#L1141)), so
+  `start_date` records the start of the *source record* rather than of this species'
+  measurements. Worst case in the fixture: GAGE `ch4` at CGO claims
+  `1981-11-30 14:01` when its first CH4 measurement is `1986-05-13 03:54` — **4.4 years**
+  early. 15 of 25 individual files are affected.
+
+  Only `start_date`. `end_date` is correct because `output_dataset` recomputes it
+  ([io.py:1491](agage_archive/io.py#L1491)) whenever an end date is passed, which
+  `run_individual_site` always does. There is no equivalent recomputation for
+  `start_date`.
+
+  Combined files are correct, but only incidentally: `combine_datasets` calls
+  `format_attributes` after the contributing datasets have each been read with
+  `dropna=True`, so the concatenated time axis already starts at a real measurement. With
+  `dropna=False` the combined files would be wrong too.
+
+  Worth fixing at the same point as any of the resample/attribute refactors. Changes an
+  attribute on ~618 files in the real archive, so it needs a decision first.
