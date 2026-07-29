@@ -4,7 +4,8 @@ from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_list, data_file_path, \
     copy_to_archive, delete_archive, create_empty_archive
-from agage_archive.data_selection import read_release_schedule, read_data_combination, choose_scale_defaults_file
+from agage_archive.data_selection import read_release_schedule, read_data_combination, \
+    choose_scale_defaults_file, data_combination_species
 from agage_archive.io import combine_datasets, combine_baseline, \
     read_baseline, output_dataset, get_data_read_function
 from agage_archive.formatting import format_species
@@ -135,6 +136,13 @@ def run_individual_site(site, species, network, instrument,
             instrument_dates = read_data_combination(network, species, site,
                                                     verbose=False)
 
+            # Whether this species is named explicitly in the site's data_combination
+            # file. read_data_combination returns a default when it isn't, so its return
+            # value alone can't distinguish "one instrument, chosen deliberately" from
+            # "no entry, so anyone may claim the top-level file"
+            has_data_combination_entry = format_species(species) in \
+                data_combination_species(network, site)
+
             if top_level_only:
                 folders = []
             else:
@@ -160,15 +168,30 @@ def run_individual_site(site, species, network, instrument,
                     # In this case, change the instrument selection text to show that it's the recommended file
                     instrument_selection_text_str = instrument_selection_text
 
-                # Check if file already exists in the top-level directory. 
-                # This can happen if only one instrument is specified in data_combination
+                # Check if a file already exists in the top-level (recommended) directory
                 if output_subpath == f"{species}":
-                    if data_file_list(network=network,
+                    existing = data_file_list(network=network,
                                     sub_path=paths.output_path,
                                     pattern = f"{format_species(species)}/{network.lower()}_{site.lower()}_{format_species(species)}*.nc",
-                                    errors="ignore")[2]:
-                        # New behaviour: This is OK, as it provides a way for us to have one recommended instrument
-                        return (site, species, "")
+                                    errors="ignore")[2]
+                    if existing:
+                        if has_data_combination_entry:
+                            # run_combined_site owns the top-level file for this species,
+                            # which is how a single instrument can be marked as the
+                            # recommended record. Nothing more to do here.
+                            return (site, species, "")
+
+                        # Otherwise another individual instrument has already claimed the
+                        # recommended slot, and which one got there first is decided by
+                        # processing order rather than by anyone's judgement. Fail loudly
+                        # rather than silently discarding this instrument's record.
+                        raise ValueError(
+                            f"More than one instrument is eligible to write the top-level "
+                            f"file for {species} at {site}: {instrument} found "
+                            f"{existing[0]} already written by another instrument. "
+                            f"Add a row for {format_species(species)} to "
+                            f"data_combination_{site.upper()}.csv so that the recommended "
+                            "record is chosen explicitly.")
 
                 ds.attrs["instrument_selection"] = instrument_selection_text_str
                 output_dataset(ds, network, instrument=instrument_str,

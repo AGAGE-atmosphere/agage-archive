@@ -105,6 +105,49 @@ produces 84 manifest differences and fails the suite.
 
 ---
 
+## Phase 1b — Combined-file attributes (#167, #169)
+
+These need tackling **together**: they are all the same underlying problem, which is that a
+combined file inherits one contributing instrument's global attributes wholesale instead of
+deriving attributes that describe the combination. #167 (which instrument's station
+metadata wins) is only the first slice of it.
+
+- [x] **Station metadata from the most recently operating instrument** (#167). Done
+      2026-07-29 via `most_recent_dataset()` in [io.py](agage_archive/io.py), applied in
+      both `combine_datasets` and `combine_baseline`. Affects `inlet_latitude`,
+      `inlet_longitude`, `inlet_base_elevation_masl`, `inlet_comment`.
+
+- [ ] **A1 — Data owners must be the union across contributing instruments** (#169).
+      `data_owner` and `data_owner_email` are currently single-valued and taken from one
+      instrument, so a combined record silently credits one owner and drops the others.
+      These need to become a de-duplicated list of every owner whose data is in the file,
+      order-stable. Decide the delimiter and make sure it survives the netCDF attribute
+      round-trip and the CSV archive (`nc_to_csv` in [util.py](agage_archive/util.py)
+      rewrites commas to semicolons, so a comma-delimited list would be mangled there).
+
+- [ ] **A2 — The combined baseline-flags file misreports its provenance.** Pre-existing,
+      exposed by #167. `combine_baseline` inherits one instrument's attributes, so the
+      combined CGO `ch3ccl3` baseline file says `instrument: GCMS-Medusa` and
+      `instrument_type: GCMS-Medusa` even though it spans ALE+GAGE+GCMD+Medusa. The
+      combined *mole fraction* file does this correctly — `format_attributes` gives it
+      `instrument` … `instrument_4` and `instrument_type: ALE/GAGE/GCMD/GCMS-Medusa`.
+      Before #167 it said `ALE`; now it says `GCMS-Medusa`. Both are wrong.
+
+- [ ] **A3 — Audit every other global attribute for the same class of error.** Work
+      through `data/attributes.json` and decide, per attribute, whether a combined file
+      should take the most recent value, the union, or something computed. Candidates
+      that look wrong today: `doi`, `citation`, `contact`, `comment` (currently
+      concatenated, which is right), `calibration_scale` (already validated as identical
+      across instruments, so single-valued is correct).
+
+- [ ] **A4 — Pin the decisions in a test.** Once A1–A3 land, the golden manifest will
+      capture the values, but add an explicit test asserting the *rule* (e.g. that the
+      combined CGO `ch3ccl3` file lists every contributing instrument's data owner) so
+      the intent survives a future manifest regeneration.
+
+**Constraint:** every item here changes published attribute values, so each needs an
+explicit decision recorded in the log below before it lands.
+
 ## Phase 1 — Confirmed bugs
 
 Each gets a failing test first, then the fix. Items 1–3 are the ones that can corrupt or
@@ -334,31 +377,23 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | Determinism treated as a bug, not a format change: instrument order in `run_all` and `read_data_combination` now sorted / column-ordered. Combined-file global attributes may differ from previously published archives, but are now reproducible. |
 | 2026-07-29 | `agage_test` release schedules trimmed to match available input data (data-less cells marked `x`) so a full run is completely determined and error-free. Schedules now document the fixture, not the real network. |
 | 2026-07-29 | Picarro-1/Picarro-2 fixtures dropped — the code paths they would cover are already covered. |
+| 2026-07-29 | Combined-file global attributes now come from the most recently operating instrument (#167). Follow-on attribute work tracked as Phase 1b together with #169. |
+| 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
 ### Open questions
 
 - ~~**Which instrument should supply a combined file's global attributes?**~~ ✅ Resolved
-  2026-07-29 (#167): the most recently operating instrument, via `most_recent_dataset()`
-  in [io.py](agage_archive/io.py). Changed 3 of 127 files in the fixture archive, global
-  attributes only — no data, variable or dtype changes.
+  2026-07-29 (#167). Follow-on work is now tracked as Phase 1b (#167, #169).
 
-- **The combined baseline-flags file misreports its provenance.** Exposed by #167 but
-  pre-existing. `combine_baseline` inherits one instrument's attributes wholesale, so the
-  combined CGO `ch3ccl3` baseline file carries `instrument: GCMS-Medusa` and
-  `instrument_type: GCMS-Medusa` even though it spans ALE+GAGE+GCMD+Medusa. The combined
-  *mole fraction* file does this correctly — `format_attributes` gives it
-  `instrument` … `instrument_4` and `instrument_type: ALE/GAGE/GCMD/GCMS-Medusa`. Before
-  #167 the baseline file said `ALE`; now it says `GCMS-Medusa`. Both are wrong. The fix is
-  to summarise instruments in `combine_baseline` the way `combine_datasets` does, but that
-  is a further output change and needs a decision.
+- ~~**Should a contested top-level file warn?**~~ ✅ Resolved 2026-07-29: it now raises.
+  See "contested top-level files" below.
 
-- **Should a contested top-level file warn?** "Top level" means the species directory
-  itself — `{species}/`, the recommended file — as opposed to
-  `{species}/individual-instruments/`. When a species has one or no entry in
-  `data_combination`, `run_individual_site` writes the individual instrument file into
-  `{species}/` as well, and the first instrument processed wins. Concretely in the
-  fixture: `ccl4/agage_test_cgo_ccl4_testv1.nc` contains **only ALE data** (1978–1984),
-  silently discarding the GAGE record, because ALE sorts first and `data_combination_CGO`
-  has no `ccl4` row. That is now deterministic but still invisible. Options: warn naming
-  the instruments that lost, or require an explicit `data_combination` entry whenever more
-  than one instrument measures a species at a site.
+- **B12 — `start_date` and `end_date` are wrong in individual-instrument files.** Found
+  2026-07-29. `format_attributes` computes them from `ds.time[0]` / `ds.time[-1]` at a
+  point in the reader where NaN mole fractions have not yet been dropped and the release
+  schedule slice has not been applied, so they describe the raw record rather than the
+  data actually in the file. GAGE `cfc-113` at CGO claims `start_date: 1981-11-30 14:01`
+  when its first real measurement is `1982-06-01 21:08` — nearly seven months out. Every
+  individual-instrument file in the fixture is affected except the flask one; combined
+  files are correct because `format_attributes` runs again after the concatenation. Fixing
+  it changes an attribute on ~618 files in the real archive, so it needs a decision.
