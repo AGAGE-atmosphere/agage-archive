@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import traceback
 from tqdm import tqdm
@@ -35,6 +36,20 @@ def get_error(e):
     return f"{error_type} in stack: {' / '.join(stack_files_and_lines)}. {str(e)}"
 
 
+def timestamps_match(ds_a, ds_b):
+    """Check that two datasets have exactly the same time axis
+
+    Args:
+        ds_a (xr.Dataset): First dataset
+        ds_b (xr.Dataset): Second dataset
+
+    Returns:
+        bool: True if the time coordinates are identical in length, order and value
+    """
+
+    return np.array_equal(ds_a.time.values, ds_b.time.values)
+
+
 def run_timestamp_checks(ds,
                         ds_baseline=None,
                         species="",
@@ -63,9 +78,13 @@ def run_timestamp_checks(ds,
     if ds_baseline["time"].to_series().duplicated().any():
         raise ValueError(f"Duplicate timestamps in baseline for {species} at {site}")
 
-    # check that the time stamps are the same in the data and baseline files
-    if (ds_baseline.time != ds.time).any():
-        raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps")
+    # check that the time stamps are the same in the data and baseline files.
+    # Compare the raw values: an xarray comparison aligns both operands on the time
+    # coordinate first, so ds_baseline.time != ds.time compares each timestamp with
+    # itself and is always False, whatever the two datasets actually contain
+    if not timestamps_match(ds_baseline, ds):
+        raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps: "
+                         f"{len(ds.time)} data points, {len(ds_baseline.time)} baseline points")
         
 
 def run_individual_site(site, species, network, instrument,
@@ -200,7 +219,7 @@ def run_individual_site(site, species, network, instrument,
                             verbose=verbose)
 
                 if ds_baseline is not None:
-                    if (ds_baseline.time != ds.time).any():
+                    if not timestamps_match(ds_baseline, ds):
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
                     # Try-except to catch errors when baseline flags are missing, but still continue processing
                     try:

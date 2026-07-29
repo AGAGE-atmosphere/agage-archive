@@ -157,13 +157,19 @@ silently mis-align published data.
       `Dataset.sortby()` has no `inplace` argument, and the result is discarded anyway, so
       the non-monotonic branch is dead code that crashes when reached. Fix:
       `ds = ds.sortby("time")`. Test: a fixture with shuffled timestamps.
-- [ ] **B2 — data/baseline timestamp check silently passes on length mismatch.**
-      [run.py:64-66](agage_archive/run.py#L64-L66) and [run.py:177](agage_archive/run.py#L177).
-      `(ds_baseline.time != ds.time).any()` aligns with an inner join, so extra or missing
-      baseline timestamps compare only over the intersection and the check returns `False`.
-      Fix: compare lengths, then `np.array_equal` on `.values`.
+- [x] **B2 — the data/baseline timestamp check could never fire.** ✅ Fixed 2026-07-29.
+      Worse than first recorded. `(ds_baseline.time != ds.time).any()` is an xarray
+      comparison, which **aligns both operands on the time coordinate before comparing**,
+      so every timestamp was compared with itself and the result was always `False` — for
+      any input, including two datasets with no timestamps in common. The check guarding
+      data/baseline alignment was dead code, in both `run_timestamp_checks` and
+      `run_individual_site`. Replaced with a `timestamps_match()` helper comparing the raw
+      values via `np.array_equal`. Enabling it broke nothing: the invariant does hold
+      throughout the fixture archive, it was simply never being verified. Covered by
+      [tests/test_run.py](tests/test_run.py).
 - [x] **B3 — `if ds_baseline:` is Dataset truthiness.** ✅ Fixed 2026-07-29 in
-      `run_timestamp_checks` and `run_individual_site`. Still needs a dedicated test (T2).
+      `run_timestamp_checks` and `run_individual_site`. Covered by
+      [tests/test_run.py](tests/test_run.py).
 - [ ] **B4 — `data_file_path` returns `None` silently.**
       [config.py:335-340](agage_archive/config.py#L335-L340). Zip + missing member +
       `errors="ignore"` returns `None`; callers fail later with an unrelated
@@ -298,7 +304,11 @@ modulo the three volatile attributes.
       single-instrument early return ([run.py:168](agage_archive/run.py#L168)); and the
       error-log path — deliberately break one species and assert it lands in the log with a
       useful message.
-- [ ] **T2 — Timestamp-mismatch tests** for `run_timestamp_checks` covering B2 and B3.
+- [x] **T2 — Timestamp-mismatch tests** for `run_timestamp_checks` covering B2 and B3.
+      ✅ Done 2026-07-29 in [tests/test_run.py](tests/test_run.py), along with targeted
+      tests for the determinism fixes, `data_combination_species`, the contested
+      top-level file error and the flask baseline skip. Writing them is what exposed the
+      true severity of B2.
 - [ ] **T3 — `config.py` error-mode matrix.** Parametrise
       `{raise, ignore, ignore_inputs, ignore_outputs}` × `{zip, dir}` ×
       `{file present, absent}` and pin the current behaviour. Prerequisite for B4/B5.
@@ -414,6 +424,8 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | `agage_test` release schedules trimmed to match available input data (data-less cells marked `x`) so a full run is completely determined and error-free. Schedules now document the fixture, not the real network. |
 | 2026-07-29 | Picarro-1/Picarro-2 fixtures dropped — the code paths they would cover are already covered. |
 | 2026-07-29 | Combined-file global attributes now come from the most recently operating instrument (#167). Follow-on attribute work tracked as Phase 1b together with #169. |
+| 2026-07-29 | Version bumped to 0.3.0. This branch changes published output, and `processing_code_version` is written into every file, so archives built from it must not claim to be 0.2.1. |
+| 2026-07-29 | B2 fixed after targeted tests showed the check was not merely weak but completely dead. Enabling it changes no output; it only means a genuine data/baseline mismatch now fails instead of being published. |
 | 2026-07-29 | B12 (`start_date` too early in individual-instrument files) will be fixed, but not in the current PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
