@@ -1,10 +1,12 @@
+import numpy as np
 import pandas as pd
 import traceback
 from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_list, data_file_path, \
     copy_to_archive, delete_archive, create_empty_archive
-from agage_archive.data_selection import read_release_schedule, read_data_combination, choose_scale_defaults_file
+from agage_archive.data_selection import read_release_schedule, read_data_combination, \
+    choose_scale_defaults_file, data_combination_species
 from agage_archive.io import combine_datasets, combine_baseline, \
     read_baseline, output_dataset, get_data_read_function
 from agage_archive.formatting import format_species
@@ -34,6 +36,20 @@ def get_error(e):
     return f"{error_type} in stack: {' / '.join(stack_files_and_lines)}. {str(e)}"
 
 
+def timestamps_match(ds_a, ds_b):
+    """Check that two datasets have exactly the same time axis
+
+    Args:
+        ds_a (xr.Dataset): First dataset
+        ds_b (xr.Dataset): Second dataset
+
+    Returns:
+        bool: True if the time coordinates are identical in length, order and value
+    """
+
+    return np.array_equal(ds_a.time.values, ds_b.time.values)
+
+
 def run_timestamp_checks(ds,
                         ds_baseline=None,
                         species="",
@@ -56,14 +72,19 @@ def run_timestamp_checks(ds,
 
         raise ValueError(f"Duplicate timestamps in {species} at {site}: {duplicated_str} for instrument {instrument_names}")
 
-    if ds_baseline:
-        if ds_baseline["time"].to_series().duplicated().any():
-            raise ValueError(f"Duplicate timestamps in baseline for {species} at {site}")
-    
-    # check that the time stamps are the same in the data and baseline files
-    if ds_baseline:
-        if (ds_baseline.time != ds.time).any():
-            raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps")
+    if ds_baseline is None:
+        return
+
+    if ds_baseline["time"].to_series().duplicated().any():
+        raise ValueError(f"Duplicate timestamps in baseline for {species} at {site}")
+
+    # check that the time stamps are the same in the data and baseline files.
+    # Compare the raw values: an xarray comparison aligns both operands on the time
+    # coordinate first, so ds_baseline.time != ds.time compares each timestamp with
+    # itself and is always False, whatever the two datasets actually contain
+    if not timestamps_match(ds_baseline, ds):
+        raise ValueError(f"Data and baseline files for {species} at {site} have different timestamps: "
+                         f"{len(ds.time)} data points, {len(ds_baseline.time)} baseline points")
         
 
 def run_individual_site(site, species, network, instrument,
@@ -119,7 +140,9 @@ def run_individual_site(site, species, network, instrument,
 
             ds = read_function(network, species, site, instrument, **read_kwargs)
 
-            if baseline:
+            # read_baseline_function is None for instruments that have no baseline flags
+            # (e.g. flask data), in which case baseline products are skipped
+            if baseline and read_baseline_function is not None:
                 ds_baseline = read_baseline_function(network, species, site, instrument,
                                             flag_name = baseline,
                                             verbose = verbose)
@@ -131,6 +154,13 @@ def run_individual_site(site, species, network, instrument,
             # If multiple instruments, store individual file in subdirectory
             instrument_dates = read_data_combination(network, species, site,
                                                     verbose=False)
+
+            # Whether this species is named explicitly in the site's data_combination
+            # file. read_data_combination returns a default when it isn't, so its return
+            # value alone can't distinguish "one instrument, chosen deliberately" from
+            # "no entry, so anyone may claim the top-level file"
+            has_data_combination_entry = format_species(species) in \
+                data_combination_species(network, site)
 
             if top_level_only:
                 folders = []
@@ -157,15 +187,30 @@ def run_individual_site(site, species, network, instrument,
                     # In this case, change the instrument selection text to show that it's the recommended file
                     instrument_selection_text_str = instrument_selection_text
 
-                # Check if file already exists in the top-level directory. 
-                # This can happen if only one instrument is specified in data_combination
+                # Check if a file already exists in the top-level (recommended) directory
                 if output_subpath == f"{species}":
-                    if data_file_list(network=network,
+                    existing = data_file_list(network=network,
                                     sub_path=paths.output_path,
                                     pattern = f"{format_species(species)}/{network.lower()}_{site.lower()}_{format_species(species)}*.nc",
-                                    errors="ignore")[2]:
-                        # New behaviour: This is OK, as it provides a way for us to have one recommended instrument
-                        return (site, species, "")
+                                    errors="ignore")[2]
+                    if existing:
+                        if has_data_combination_entry:
+                            # run_combined_site owns the top-level file for this species,
+                            # which is how a single instrument can be marked as the
+                            # recommended record. Nothing more to do here.
+                            return (site, species, "")
+
+                        # Otherwise another individual instrument has already claimed the
+                        # recommended slot, and which one got there first is decided by
+                        # processing order rather than by anyone's judgement. Fail loudly
+                        # rather than silently discarding this instrument's record.
+                        raise ValueError(
+                            f"More than one instrument is eligible to write the top-level "
+                            f"file for {species} at {site}: {instrument} found "
+                            f"{existing[0]} already written by another instrument. "
+                            f"Add a row for {format_species(species)} to "
+                            f"data_combination_{site.upper()}.csv so that the recommended "
+                            "record is chosen explicitly.")
 
                 ds.attrs["instrument_selection"] = instrument_selection_text_str
                 output_dataset(ds, network, instrument=instrument_str,
@@ -173,8 +218,8 @@ def run_individual_site(site, species, network, instrument,
                             end_date=rs.loc[species, site],
                             verbose=verbose)
 
-                if baseline:
-                    if (ds_baseline.time != ds.time).any():
+                if ds_baseline is not None:
+                    if not timestamps_match(ds_baseline, ds):
                         raise ValueError(f"Baseline and data files for {species} at {site} have different timestamps")
                     # Try-except to catch errors when baseline flags are missing, but still continue processing
                     try:
@@ -195,9 +240,8 @@ def run_individual_site(site, species, network, instrument,
                                 verbose=verbose)
                     except Exception as e:
                         error_log.append(get_error(e))
-                else:
-                    if monthly:
-                        raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
+                elif monthly and not baseline:
+                    raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
 
             error_log.append("")
 
@@ -426,7 +470,7 @@ def run_combined_instruments(network,
                                 sub_path = "data_combination",
                                 pattern = f"*.csv")
     
-    sites_dc = [f.split(".")[0].split("_")[-1] for f in files]
+    sites_dc = sorted([f.split(".")[0].split("_")[-1] for f in files])
 
     if not sites:
         sites = sites_dc.copy()
@@ -553,7 +597,11 @@ def run_all(network,
         _, _, files = data_file_list(network = network,
                                     sub_path = "data_release_schedule",
                                     pattern = f"*.csv")
-        instruments = [f.split(".")[0].split("_")[-1] for f in files]
+        # Sort so that processing order doesn't depend on the order in which the
+        # filesystem happens to return the release schedule files. Where more than one
+        # instrument is eligible to write the top-level file for a species, the first
+        # one processed wins, so an unsorted list makes the archive irreproducible.
+        instruments = sorted([f.split(".")[0].split("_")[-1] for f in files])
     else:
         instruments = instrument_include
 

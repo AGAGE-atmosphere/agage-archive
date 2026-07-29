@@ -92,7 +92,13 @@ def test_read_data_exclude():
 
 
 def test_read_release_schedule():
-    '''Test read_release_schedule function'''
+    '''Test read_release_schedule function
+
+    The agage_test release schedules only leave a cell live where there is input data
+    behind it, so the parsing behaviours are spread across instruments: GCMD carries the
+    general release date fill and the "x" markers, GCMS-Magnum and Picarro carry explicit
+    per-cell dates.
+    '''
 
     df = read_release_schedule("agage_test", "GCMD",
                           species = None,
@@ -101,16 +107,29 @@ def test_read_release_schedule():
     # Check that full dataframe has been returned
     assert df.shape == (10, 5)
 
-    # Check that the default release date has been input in the relevant cells
-    assert df.loc["cfc-11", "MHD"] == "2023-01-01 00:00"
+    # Whitespace should be stripped from the species column ("cfc-113 " in the csv)
+    assert "cfc-113" in df.index
 
-    # Check some species-specific dates
-    assert df.loc["ccl4", "SMO"] == "2019-11-21 00:00"
-    assert df.loc["ch4", "RPB"] == "2017-02-15 00:00"
+    # Check that the default release date has been input in the blank cells
+    assert df.loc["ch3ccl3", "CGO"] == "2023-01-01 00:00"
 
-    # Return for one species and site
-    assert read_release_schedule("agage_test", "GCMD", species = "cfc-113", site = "RPB") \
-        == "2005-07-31 00:00"
+    # Cells marked x are passed through unchanged in the full dataframe
+    assert df.loc["cfc-11", "MHD"] == "x"
+
+    # ... but when a single species/site is requested, x returns a date before any data
+    # was collected, so that everything is removed
+    assert read_release_schedule("agage_test", "GCMD",
+                                 species = "cfc-11", site = "MHD") == "1970-01-01"
+
+    # Explicit per-cell dates are returned as-is
+    assert read_release_schedule("agage_test", "GCMS-Magnum",
+                                 species = "hfc-134a", site = "MHD") == "1998-01-20 00:00"
+    assert read_release_schedule("agage_test", "Picarro",
+                                 species = "ch4", site = "THD") == "2015-01-02 00:00"
+
+    # A blank cell falls back to the general release date
+    assert read_release_schedule("agage_test", "Picarro",
+                                 species = "ch4", site = "TAC") == "2023-01-01 00:00"
 
 
 def test_read_data_combination():

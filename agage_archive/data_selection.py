@@ -52,13 +52,19 @@ def read_data_combination(network, species, site,
     if len(df) > 1: 
         raise ValueError("Can only have each species appear at most once in data_selection table")
 
-    # Extract instrument names from column names
-    instruments = [col.split(" ")[0] for col in df.columns]
+    # Extract instrument names from column names.
+    # dict.fromkeys de-duplicates while preserving the column order of the
+    # data_combination file. A set was used here previously, which meant the instrument
+    # order varied between runs with Python's hash seed. That order is carried through to
+    # xr.concat in combine_datasets, where combine_attrs="override" takes the global
+    # attributes from whichever dataset happens to be first, so combined files were not
+    # reproducible.
+    instruments = list(dict.fromkeys(col.split(" ")[0] for col in df.columns))
 
     # For each instrument, find start and end dates
     instrument_dates = {}
 
-    for instrument in set(instruments):
+    for instrument in instruments:
 
         dates = df.loc[:, [f"{instrument} start", f"{instrument} end"]].values[0].astype(str)
 
@@ -75,6 +81,42 @@ def read_data_combination(network, species, site,
         pass
 
     return instrument_dates
+
+
+def data_combination_species(network, site):
+    '''List the species that have an explicit entry in a site's data_combination file
+
+    read_data_combination falls back to a default when a species has no entry, which makes
+    "one instrument, explicitly chosen" indistinguishable from "no entry at all" in its
+    return value. Callers that need to tell those apart use this.
+
+    Args:
+        network (str): Network
+        site (str): Site code
+
+    Returns:
+        set: Formatted species names with an explicit entry. Empty if there is no
+            data_combination file for this site.
+
+    Raises:
+        ValueError: If more than one data_combination file matches the site
+    '''
+
+    _, _, files = data_file_list(network = network,
+                                sub_path = "data_combination",
+                                pattern = f"*{site.upper()}.csv"
+                                )
+
+    if len(files) == 0:
+        return set()
+
+    if len(files) > 1:
+        raise ValueError(f"Found too many data_combination files for {site}")
+
+    with open_data_file(files[0], network = network, sub_path = "data_combination") as f:
+        df = pd.read_csv(f, comment = "#", index_col = "Species")
+
+    return {format_species(str(species)) for species in df.index}
 
 
 def read_release_schedule(network, instrument,
