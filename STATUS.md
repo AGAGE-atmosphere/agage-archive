@@ -81,7 +81,7 @@ would have frozen a ragged, half-broken archive as the reference.
 kinds, writes no error log, and is byte-identical across runs and across
 `PYTHONHASHSEED` values.
 
-## Phase 0 — Safety net ✅ MOSTLY DONE (2026-07-29)
+## Phase 0 — Safety net (#38) ✅ MOSTLY DONE (2026-07-29)
 
 - [x] **Golden archive manifest test** — `tests/test_archive.py`, reference at
       `tests/reference/archive_manifest.json` (127 entries). Pins per-file paths,
@@ -125,7 +125,7 @@ metadata wins) is only the first slice of it.
       round-trip and the CSV archive (`nc_to_csv` in [util.py](agage_archive/util.py)
       rewrites commas to semicolons, so a comma-delimited list would be mangled there).
 
-- [ ] **A2 — The combined baseline-flags file misreports its provenance.** Pre-existing,
+- [ ] **A2 — The combined baseline-flags file misreports its provenance** (#168). Pre-existing,
       exposed by #167. `combine_baseline` inherits one instrument's attributes, so the
       combined CGO `ch3ccl3` baseline file says `instrument: GCMS-Medusa` and
       `instrument_type: GCMS-Medusa` even though it spans ALE+GAGE+GCMD+Medusa. The
@@ -136,9 +136,10 @@ metadata wins) is only the first slice of it.
 - [ ] **A3 — Audit every other global attribute for the same class of error.** Work
       through `data/attributes.json` and decide, per attribute, whether a combined file
       should take the most recent value, the union, or something computed. Candidates
-      that look wrong today: `doi`, `citation`, `contact`, `comment` (currently
-      concatenated, which is right), `calibration_scale` (already validated as identical
-      across instruments, so single-valued is correct).
+      that look wrong today: `doi`, `citation`, `contact`, `comment` (#175: currently
+      concatenated without de-duplicating identical instrument comments),
+      `calibration_scale` (already validated as identical across instruments, so
+      single-valued is correct).
 
 - [ ] **A4 — Pin the decisions in a test.** Once A1–A3 land, the golden manifest will
       capture the values, but add an explicit test asserting the *rule* (e.g. that the
@@ -245,6 +246,12 @@ silently mis-align published data.
       attribute on ~618 files in the real archive. Do it alongside Phase 1b/A3, which is
       the same underlying problem.
 
+- [ ] **B13 — Magnum inlet attributes have inconsistent types** (#171). Magnum files
+      expose `inlet_base_elevation_masl`, `inlet_latitude`, and `inlet_longitude` as
+      `np.float64`, while other readers expose them as strings. Confirm the archive schema's
+      intended type, add a regression test, and record the output-format decision before
+      changing published attributes.
+
 ### Minor (batch into one commit)
 
 - [ ] `fnmatch.filter` shadows the builtin and raises `IndexError` rather than
@@ -320,6 +327,10 @@ modulo the three volatile attributes.
       `drop_duplicates` (P4).
 - [ ] **T6 — `util.archive_to_csv` end-to-end.** 0% covered and it produces a published
       archive.
+- [ ] **T7 — Input configuration consistency checks** (#97). Validate that species names
+      agree across release schedules, scale-default files and `standard_names.json`; check
+      that configured dates parse successfully and that end dates are not before start
+      dates. Cover failures with messages that identify the offending file and value.
 
 ---
 
