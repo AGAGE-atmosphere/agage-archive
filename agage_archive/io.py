@@ -305,7 +305,7 @@ def read_nc(network, species, site, instrument,
 
     # Check that time is monotonic and that there are no duplicate indices
     if not pd.Index(ds.time).is_monotonic_increasing:
-        ds.sortby("time", inplace=True)
+        ds = ds.sortby("time")
     if len(ds.time) != len(ds.time.drop_duplicates(dim="time")):
         ds = ds.drop_duplicates(dim="time")
 
@@ -1524,4 +1524,3 @@ def get_data_read_function(network, instrument):
         raise ValueError(error_message)
 
     return globals()[read_functions[instrument]]
-

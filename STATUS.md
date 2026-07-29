@@ -154,10 +154,12 @@ explicit decision recorded in the log below before it lands.
 Each gets a failing test first, then the fix. Items 1–3 are the ones that can corrupt or
 silently mis-align published data.
 
-- [ ] **B1 — `sortby(inplace=True)` raises.** [io.py:307-308](agage_archive/io.py#L307-L308).
+- [x] **B1 — `sortby(inplace=True)` raises.** ✅ Fixed 2026-07-29.
+      [io.py:307-308](agage_archive/io.py#L307-L308).
       `Dataset.sortby()` has no `inplace` argument, and the result is discarded anyway, so
-      the non-monotonic branch is dead code that crashes when reached. Fix:
-      `ds = ds.sortby("time")`. Test: a fixture with shuffled timestamps.
+      the non-monotonic branch was dead code that crashed when reached. Replaced with
+      `ds = ds.sortby("time")` and covered by an in-memory shuffled input test in
+      [tests/test_io.py](tests/test_io.py).
 - [x] **B2 — the data/baseline timestamp check could never fire.** ✅ Fixed 2026-07-29.
       Worse than first recorded. `(ds_baseline.time != ds.time).any()` is an xarray
       comparison, which **aligns both operands on the time coordinate before comparing**,
@@ -323,8 +325,9 @@ modulo the three volatile attributes.
       `optional` ∈ {`"True"`, `"False"`}, `remove_flagged` ∈ {`"True"`, `"False"`, `"Zero"`},
       an `encoding.dtype` present in `nc4_types`, and a `resample_method` handled by
       `define_agg_dict`. Catches B8 and every future typo.
-- [ ] **T5 — Non-monotonic and duplicate-timestamp input fixtures** for `read_nc` (B1) and
-      `drop_duplicates` (P4).
+- [ ] **T5 — Non-monotonic and duplicate-timestamp input fixtures.** The in-memory
+      non-monotonic `read_nc` case (B1) is covered; the duplicate-timestamp case for
+      `drop_duplicates` (P4) remains outstanding.
 - [ ] **T6 — `util.archive_to_csv` end-to-end.** 0% covered and it produces a published
       archive.
 - [ ] **T7 — Input configuration consistency checks** (#97). Validate that species names

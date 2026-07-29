@@ -2,6 +2,8 @@ import pandas as pd
 import xarray as xr
 import numpy as np
 import json
+from contextlib import nullcontext
+from unittest.mock import patch
 
 from agage_archive.config import Paths, open_data_file
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
@@ -211,6 +213,19 @@ def test_timestamp():
 
     assert ds.time.attrs["long_name"] == "time"
     assert ds.time.attrs["comment"] == "Timestamp is the start of the sampling period in UTC"
+
+
+def test_read_nc_sorts_non_monotonic_timestamps():
+    filename, sub_path = read_nc_path("agage_test", "CH3CCl3", "CGO", "GCMS-Medusa")
+
+    with open_data_file(filename, network="agage_test", sub_path=sub_path) as f:
+        ds_original = xr.open_dataset(f).load()
+
+    shuffled = ds_original.isel(time=np.roll(np.arange(ds_original.sizes["time"]), 1))
+    with patch("agage_archive.io.open_data_file", return_value=nullcontext(shuffled)):
+        ds = read_nc("agage_test", "CH3CCl3", "CGO", "GCMS-Medusa", resample=False)
+
+    assert pd.Index(ds.time.values).is_monotonic_increasing
 
 
 def test_picarro():
