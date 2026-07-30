@@ -69,6 +69,7 @@ def test_get_instrument_number():
     instrument_num = get_instrument_number("Picarro-1", network)
     assert isinstance(instrument_num, int)
     assert instrument_num == instrument_number["Picarro"]
+    assert get_instrument_number("GCMS-Medusa-flask", network) == instrument_number["GCMS-Medusa-flask"]
 
     instrument_number_with_overlap = {"GCMS": 1, "GCMS-Medusa": 2}
     monkeypatch = pytest.MonkeyPatch()
