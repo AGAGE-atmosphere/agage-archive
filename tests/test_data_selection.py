@@ -132,6 +132,8 @@ def test_read_release_schedule():
     # A blank cell falls back to the general release date
     assert read_release_schedule("agage_test", "Picarro",
                                  species = "ch4", site = "TAC") == "2023-01-01 00:00"
+    assert read_release_schedule("agage_test", "Picarro",
+                                 species = "CH4", site = "TAC") == "2023-01-01 00:00"
 
 
 def test_read_release_schedule_without_comment_header():

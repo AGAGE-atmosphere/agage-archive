@@ -193,11 +193,11 @@ silently mis-align published data.
       assigned inside the comment-scanning loop, so a schedule file whose first line is not
       a comment raised `UnboundLocalError` at `f.seek(pos)`. Initialize the rewind position
       before scanning; covered by a no-comment-header in-memory schedule test.
-- [ ] **B7 — species case mismatch between validation and lookup.**
+- [x] **B7 — species case mismatch between validation and lookup.** ✅ Fixed 2026-07-30.
       [data_selection.py:122-131](agage_archive/data_selection.py#L122-L131) and
       [data_selection.py:197-200](agage_archive/data_selection.py#L197-L200) validate with
-      `format_species(species)` then index with the raw `species`. Works only because all
-      current callers pre-format.
+      `format_species(species)` then indexed with the raw `species`. Normalize the matched
+      index label before lookup; covered by a mixed-case species test.
 - [ ] **B8 — `instrument_type` is accidentally optional.** `data/variables.json` has
       `"optional": ""`, and [formatting.py:261](agage_archive/formatting.py#L261) treats
       anything other than the exact string `"False"` as optional — so a missing
