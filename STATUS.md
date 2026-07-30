@@ -198,11 +198,11 @@ silently mis-align published data.
       [data_selection.py:197-200](agage_archive/data_selection.py#L197-L200) validate with
       `format_species(species)` then indexed with the raw `species`. Normalize the matched
       index label before lookup; covered by a mixed-case species test.
-- [ ] **B8 — `instrument_type` is accidentally optional.** `data/variables.json` has
-      `"optional": ""`, and [formatting.py:261](agage_archive/formatting.py#L261) treats
-      anything other than the exact string `"False"` as optional — so a missing
-      `instrument_type` is silently dropped rather than raising. Covered by the Phase 3
-      schema test.
+- [x] **B8 — `instrument_type` is accidentally optional.** ✅ Fixed 2026-07-30.
+      `data/variables.json` had `"optional": ""`, and
+      [formatting.py:261](agage_archive/formatting.py#L261) treated anything other than the
+      exact string `"False"` as optional — so a missing `instrument_type` was silently
+      dropped rather than raising. Set it to `"False"` and covered it with the schema test.
 - [x] **B9 — flask + baseline fails via the generic handler.** ✅ Fixed 2026-07-29.
       Baseline and monthly products are skipped when `read_baseline_function is None`;
       the `NotImplementedError` for "monthly without baseline" is preserved.
@@ -326,10 +326,11 @@ modulo the three volatile attributes.
       `{raise, ignore, ignore_inputs, ignore_outputs}` × `{zip, dir}` ×
       `{file present, absent}` and pinned the corrected behavior in `tests/test_config.py`.
       It remains the regression test for B4/B5.
-- [ ] **T4 — Schema test over `data/variables.json` and `attributes.json`:** every entry has
+- [x] **T4 — Schema test over `data/variables.json` and `attributes.json`.** ✅ Done
+      2026-07-30. Every entry has
       `optional` ∈ {`"True"`, `"False"`}, `remove_flagged` ∈ {`"True"`, `"False"`, `"Zero"`},
       an `encoding.dtype` present in `nc4_types`, and a `resample_method` handled by
-      `define_agg_dict`. Catches B8 and every future typo.
+      `define_agg_dict` where applicable. Catches B8 and future typos.
 - [ ] **T5 — Non-monotonic and duplicate-timestamp input fixtures.** The in-memory
       non-monotonic `read_nc` case (B1) is covered; the duplicate-timestamp case for
       `drop_duplicates` (P4) remains outstanding.

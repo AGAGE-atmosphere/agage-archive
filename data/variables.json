@@ -120,7 +120,7 @@
             "dtype": "i1",
             "_FillValue": -99
         },
-        "optional": "",
+        "optional": "False",
         "resample_method": "first",
         "remove_flagged": "False"
     }
