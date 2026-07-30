@@ -9,7 +9,7 @@ from agage_archive.config import Paths, open_data_file
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
     read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function, \
-    _merge_duplicate_flask_measurements
+    _merge_duplicate_flask_measurements, output_write
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
 from agage_archive.data_selection import read_data_combination
@@ -253,6 +253,18 @@ def test_output_dataset_recomputes_start_date(monkeypatch):
     output_dataset(ds, "agage_test", output_subpath="ch4", verbose=False)
 
     assert written["dataset"].attrs["start_date"] == "2020-01-01 00:00:00"
+
+
+def test_output_write_replaces_existing_zip_member(tmp_path):
+    from zipfile import ZipFile
+
+    ds = xr.Dataset({"mf": ("time", [1.0])}, coords={"time": [0]})
+    archive = tmp_path / "output.zip"
+    output_write(ds, archive, "file.nc", output_subpath="species")
+    output_write(ds, archive, "file.nc", output_subpath="species")
+
+    with ZipFile(archive) as zip_file:
+        assert zip_file.namelist().count("species/file.nc") == 1
 
 
 def test_picarro():

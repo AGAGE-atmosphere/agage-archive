@@ -1437,6 +1437,15 @@ def output_write(ds, out_path, filename,
         with ZipFile(out_path, mode="a", compression=ZIP_DEFLATED, compresslevel=6) as zip:
             member_path = "/".join(part for part in output_subpath.split("/") if part)
             member_path = f"{member_path}/{filename}" if member_path else filename
+            if member_path in zip.namelist():
+                source_members = [member for member in zip.infolist() if member.filename != member_path]
+                existing_data = {member.filename: zip.read(member) for member in source_members}
+                zip.close()
+                with ZipFile(out_path, mode="w", compression=ZIP_DEFLATED, compresslevel=6) as replacement:
+                    for name, data in existing_data.items():
+                        replacement.writestr(name, data)
+                    replacement.writestr(member_path, ds.to_netcdf())
+                return
             zip.writestr(member_path, ds.to_netcdf())
     
     else:

@@ -266,7 +266,8 @@ silently mis-align published data.
       `ZipExtFile` refcounting
 - [x] Leading-slash zip member when `output_subpath=""`. ✅ Fixed 2026-07-30. ZIP output
       now normalizes empty or slash-terminated subpaths without creating a leading slash.
-- [ ] Zip `"a"` mode creates duplicate members if a run is not preceded by `delete_archive`
+- [x] Zip `"a"` mode creates duplicate members if a run is not preceded by `delete_archive`. ✅ Fixed
+      2026-07-30. Existing members are replaced when writing the same archive path.
 - [ ] `if "time" in var` should be `var == "time"` — [data_selection.py:269](agage_archive/data_selection.py#L269)
 - [ ] Instrument partial-matching uses dict insertion order, not longest match —
       [definitions.py:165-170](agage_archive/definitions.py#L165-L170)
