@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Output datasets now recompute both `start_date` and `end_date` after final release-date filtering, so individual files no longer report the source record's earlier start date.
 - Global inlet latitude, longitude, and base elevation attributes are now serialized consistently as strings.
 - Missing ZIP members now raise `FileNotFoundError` instead of an unrelated `IndexError`.
+- ZIP output paths no longer create a leading slash when `output_subpath` is empty.
 
 ### Changed
 
