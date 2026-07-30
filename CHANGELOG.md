@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global inlet latitude, longitude, and base elevation attributes are now serialized consistently as strings.
 - Missing ZIP members now raise `FileNotFoundError` instead of an unrelated `IndexError`.
 - ZIP output paths no longer create a leading slash when `output_subpath` is empty.
+- ZIP output writes now replace an existing member instead of creating duplicate members.
 
 ### Changed
 
