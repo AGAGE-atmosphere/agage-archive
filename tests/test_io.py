@@ -62,6 +62,9 @@ def test_read_ale_gage():
     for var_name in ds_ale.data_vars.keys():
         type_test(ds_ale[var_name].values[0], var_name)
 
+    for attr in ["inlet_base_elevation_masl", "inlet_latitude", "inlet_longitude"]:
+        assert isinstance(ds_ale.attrs[attr], str)
+
 
 def test_combine_datasets():
 
