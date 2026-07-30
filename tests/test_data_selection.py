@@ -1,4 +1,6 @@
 import numpy as np
+from io import BytesIO
+from unittest.mock import patch
 import pandas as pd
 import xarray as xr
 
@@ -130,6 +132,15 @@ def test_read_release_schedule():
     # A blank cell falls back to the general release date
     assert read_release_schedule("agage_test", "Picarro",
                                  species = "ch4", site = "TAC") == "2023-01-01 00:00"
+
+
+def test_read_release_schedule_without_comment_header():
+    schedule = b"# GENERAL RELEASE DATE: 2023-01-01 00:00\nSpecies,CGO\nch3ccl3,2023-01-01 00:00\n"
+    with patch("agage_archive.data_selection.open_data_file",
+               return_value=BytesIO(schedule)):
+        df = read_release_schedule("agage_test", "GCMD")
+
+    assert df.loc["ch3ccl3", "CGO"] == "2023-01-01 00:00"
 
 
 def test_read_data_combination():

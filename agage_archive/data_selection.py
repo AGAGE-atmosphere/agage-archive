@@ -138,6 +138,7 @@ def read_release_schedule(network, instrument,
                         network = network, sub_path = "data_release_schedule") as f:
         # Read header lines
         header = [f.readline().decode("utf-8-sig")]
+        pos = 0
         while header[-1][0] == "#":
             pos = f.tell()
             header.append(f.readline().decode("utf-8"))
@@ -320,4 +321,3 @@ def read_data_exclude(ds, species, site, instrument,
 
         return ds
     
-
