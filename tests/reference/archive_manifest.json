@@ -220,7 +220,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ccl4",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-08 21:35:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -351,7 +351,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ccl4",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 10:25:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -595,7 +595,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ccl4",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -728,7 +728,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ccl4",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -845,7 +845,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -864,7 +864,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ccl4",
-   "start_date": "1978-07-08 21:35:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -1477,7 +1477,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-11",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-08 09:13:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -1608,7 +1608,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-11",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 13:27:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -1852,7 +1852,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-11",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -1985,7 +1985,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-11",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -2102,7 +2102,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -2121,7 +2121,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-11",
-   "start_date": "1978-07-08 09:13:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -2439,7 +2439,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-113",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1982-06-01 21:08:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -2627,7 +2627,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-113",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1982-06-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -2744,7 +2744,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -2760,7 +2760,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-113",
-   "start_date": "1982-06-01 21:08:00",
+   "start_date": "1982-06-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -3212,7 +3212,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-12",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 10:25:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -3456,7 +3456,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-12",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -3589,7 +3589,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-12",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -3706,7 +3706,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -3725,7 +3725,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "cfc-12",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -3857,7 +3857,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "ch2cl2",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-06 23:56:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -4044,7 +4044,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "ch2cl2",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-06 23:56:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -4232,7 +4232,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "ch2cl2",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -4365,7 +4365,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "ch2cl2",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -4695,7 +4695,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-08 09:13:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -4826,7 +4826,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 10:25:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -5443,7 +5443,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -5576,7 +5576,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -5709,7 +5709,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1995-01-01 01:16:00",
+   "start_date": "1995-01-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -5845,7 +5845,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "2020-01-01 10:01:00",
+   "start_date": "2020-01-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -5962,7 +5962,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "2021-01-01 22:50:00",
+   "end_date": "2021-01-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.000000",
    "inlet_comment": "multiple inlets have been used at the station, all in close proximity to each other.",
@@ -5990,7 +5990,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch3ccl3",
-   "start_date": "1978-07-08 09:13:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -6257,7 +6257,7 @@
    "station_long_name": "Tacolneston, United Kingdom",
    "version": "testv1"
   },
-  "data_checksum": "9e1d0f085cb8b3e57904032065cf8833f741e892915765dcb67658ae11e41162",
+  "data_checksum": "443156fb93fca86db0b78f6d0ae627cae744b8829fa187e38817b38078b9ec68",
   "n_time": 210,
   "type": "netcdf",
   "variables": {
@@ -6388,7 +6388,7 @@
    "station_long_name": "Trinidad Head, California",
    "version": "testv1"
   },
-  "data_checksum": "5cd670ed9044f63e246c34d59c35df6a1af2a306084d1a110656309d5e2c3231",
+  "data_checksum": "3b9aca5a41663795242c11d0d109a11d90486e0aa1b9eee633243e55ec9faf7c",
   "n_time": 25,
   "type": "netcdf",
   "variables": {
@@ -6678,7 +6678,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch4",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1986-05-13 03:54:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -6813,7 +6813,7 @@
    "station_long_name": "Tacolneston, United Kingdom",
    "version": "testv1"
   },
-  "data_checksum": "9e1d0f085cb8b3e57904032065cf8833f741e892915765dcb67658ae11e41162",
+  "data_checksum": "443156fb93fca86db0b78f6d0ae627cae744b8829fa187e38817b38078b9ec68",
   "n_time": 210,
   "type": "netcdf",
   "variables": {
@@ -6944,7 +6944,7 @@
    "station_long_name": "Trinidad Head, California",
    "version": "testv1"
   },
-  "data_checksum": "5cd670ed9044f63e246c34d59c35df6a1af2a306084d1a110656309d5e2c3231",
+  "data_checksum": "3b9aca5a41663795242c11d0d109a11d90486e0aa1b9eee633243e55ec9faf7c",
   "n_time": 25,
   "type": "netcdf",
   "variables": {
@@ -7236,7 +7236,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch4",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1986-05-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -7373,7 +7373,7 @@
    "station_long_name": "Tacolneston, United Kingdom",
    "version": "testv1"
   },
-  "data_checksum": "df9c9e49f3affac7ef49add92b167a0ad9819c0d0f773df5aa3ad436df180f8e",
+  "data_checksum": "8ecdefd419a7767109b99e371709d8c8a34db52e55ae86a56d72f888a755b3c3",
   "n_time": 1,
   "type": "netcdf",
   "variables": {
@@ -7506,7 +7506,7 @@
    "station_long_name": "Trinidad Head, California",
    "version": "testv1"
   },
-  "data_checksum": "63e94faab05e7fdce968c5db3eae1fe4674eb97268923c24e43c434a8d2e4c9b",
+  "data_checksum": "95449c5830beaee546de27e51f7922b6c79523106acdf9fb3150cabef5c115bc",
   "n_time": 1,
   "type": "netcdf",
   "variables": {
@@ -7619,7 +7619,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -7635,7 +7635,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "ch4",
-   "start_date": "1986-05-13 03:54:00",
+   "start_date": "1986-05-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -7772,7 +7772,7 @@
    "station_long_name": "Tacolneston, United Kingdom",
    "version": "testv1"
   },
-  "data_checksum": "df9c9e49f3affac7ef49add92b167a0ad9819c0d0f773df5aa3ad436df180f8e",
+  "data_checksum": "8ecdefd419a7767109b99e371709d8c8a34db52e55ae86a56d72f888a755b3c3",
   "n_time": 1,
   "type": "netcdf",
   "variables": {
@@ -7905,7 +7905,7 @@
    "station_long_name": "Trinidad Head, California",
    "version": "testv1"
   },
-  "data_checksum": "63e94faab05e7fdce968c5db3eae1fe4674eb97268923c24e43c434a8d2e4c9b",
+  "data_checksum": "95449c5830beaee546de27e51f7922b6c79523106acdf9fb3150cabef5c115bc",
   "n_time": 1,
   "type": "netcdf",
   "variables": {
@@ -8033,7 +8033,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "chcl3",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-06 23:56:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -8220,7 +8220,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "chcl3",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-06 23:56:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -8408,7 +8408,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "chcl3",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -8541,7 +8541,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "chcl3",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1995-04-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9048,7 +9048,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "h-1211",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9181,7 +9181,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "h-1211",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9313,7 +9313,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-141b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-11-03 15:42:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9500,7 +9500,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-141b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-11-03 15:42:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9688,7 +9688,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-141b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-11-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -9821,7 +9821,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-141b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-11-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -10328,7 +10328,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-142b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -10461,7 +10461,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hcfc-142b",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -10968,7 +10968,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hfc-134a",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -11101,7 +11101,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hfc-134a",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -11608,7 +11608,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hfc-152a",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -11741,7 +11741,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "hfc-152a",
-   "start_date": "1994-10-13 23:54:00",
+   "start_date": "1994-10-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -12062,7 +12062,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "n2o",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-08 17:30:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -12193,7 +12193,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "n2o",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 10:25:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -12437,7 +12437,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "n2o",
-   "start_date": "1978-07-08 05:08:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -12570,7 +12570,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "n2o",
-   "start_date": "1981-11-30 14:01:00",
+   "start_date": "1981-12-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -12687,7 +12687,7 @@
    "data_owner": "Paul Krummel",
    "data_owner_email": "paul.krummel@csiro.au",
    "doi": "",
-   "end_date": "1994-12-29 22:41:00",
+   "end_date": "1994-12-01 00:00:00",
    "frequency": "monthly baseline",
    "inlet_base_elevation_masl": "94.0",
    "inlet_comment": "",
@@ -12706,7 +12706,7 @@
    "product_type": "mole fraction",
    "site_code": "CGO",
    "species": "n2o",
-   "start_date": "1978-07-08 17:30:00",
+   "start_date": "1978-07-01 00:00:00",
    "station_long_name": "Kennaook/Cape Grim, Tasmania, Australia",
    "version": "testv1"
   },
@@ -12838,7 +12838,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "nf3",
-   "start_date": "2020-01-01 00:31:00",
+   "start_date": "2020-01-03 00:40:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -13023,7 +13023,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "nf3",
-   "start_date": "2020-01-01 00:31:00",
+   "start_date": "2020-01-03 00:40:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -13209,7 +13209,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "nf3",
-   "start_date": "2020-01-01 00:31:00",
+   "start_date": "2020-01-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },
@@ -13342,7 +13342,7 @@
    "product_type": "mole fraction",
    "site_code": "MHD",
    "species": "nf3",
-   "start_date": "2020-01-01 00:31:00",
+   "start_date": "2020-01-01 00:00:00",
    "station_long_name": "Mace Head, Ireland",
    "version": "testv1"
   },

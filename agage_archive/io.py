@@ -1497,6 +1497,9 @@ def output_dataset(ds, network,
         raise ValueError(f"No data retained for {ds_out.attrs['species']} when trying write {filename} after applying release schedule end dates. " + \
                         "Check dates in release schedule or omit this instrument.")
 
+    ds_out.attrs["start_date"] = str(ds_out.time[0].dt.strftime("%Y-%m-%d %H:%M:%S").values)
+    ds_out.attrs["end_date"] = str(ds_out.time[-1].dt.strftime("%Y-%m-%d %H:%M:%S").values)
+
     output_write(ds_out, out_path, filename,
                 output_subpath=output_subpath, verbose=verbose)
 
