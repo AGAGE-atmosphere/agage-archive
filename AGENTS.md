@@ -96,6 +96,10 @@ network in `data/agage_test/`.
   `Last updated` date, relevant checkboxes and issue references, and record material
   decisions or test results. Do not add branch-specific metadata to STATUS; the active
   branch and PR already provide that context.
+- **Link relevant GitHub issues in commit and PR messages.** If a change fixes or
+  addresses a tracked issue, include `Fixes #123` (or `Addresses #123` when it is not
+  fully resolved) in the commit or PR description so GitHub links the work and closes the
+  issue when appropriate.
 - **Run the tests before and after every change.** The suite is fast; there is no excuse
   for skipping it. Report failures with the actual output rather than summarising.
 - **Add the test first when fixing a bug.** Several bugs in this codebase sat in
