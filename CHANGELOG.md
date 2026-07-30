@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Data-exclusion processing now only skips the actual `time` coordinate, not variables whose names merely contain `time`.
 - Instrument partial matching now prefers the longest matching instrument name.
 - Scale-default file selection now breaks equal-specificity ties by filename rather than filesystem order.
+- `open_data_file` now keeps a ZIP archive open for the lifetime of the member handle it returns and closes it when that handle is closed, instead of closing the archive first and relying on CPython's `ZipExtFile` reference counting to keep the closed archive readable.
 
 ### Changed
 

@@ -390,11 +390,28 @@ def open_data_file(filename,
         print(f"... opening {pth / filename}")
 
     if pth.suffix == ".zip":
-        with ZipFile(pth, mode) as z:
+        # Do not use a `with` block here: closing the ZipFile before returning
+        # would leave the member handle reading from a closed archive, which
+        # only works by accident via CPython's ZipExtFile reference counting.
+        # Keep the ZipFile open for the lifetime of the handle, and close it
+        # when the handle is closed so the underlying file is released promptly.
+        z = ZipFile(pth, mode)
+        try:
             matches = [member for member in z.namelist() if fnmatch(member, filename)]
             if not matches:
                 raise FileNotFoundError(f"Can't find {filename} in {pth}")
-            return z.open(matches[0])
+            handle = z.open(matches[0])
+        except Exception:
+            z.close()
+            raise
+        handle_close = handle.close
+        def _close(_handle_close=handle_close, _z=z):
+            try:
+                _handle_close()
+            finally:
+                _z.close()
+        handle.close = _close
+        return handle
     elif "tar.gz" in filename:
         return tarfile.open(pth / filename, f"{mode}:gz")
     else:

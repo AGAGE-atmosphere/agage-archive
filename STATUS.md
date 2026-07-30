@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30
+**Last updated:** 2026-07-30 (open_data_file ZIP handle lifetime)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -262,8 +262,11 @@ silently mis-align published data.
 - [x] `fnmatch.filter` shadows the builtin and raises `IndexError` rather than
       `FileNotFoundError` on no match. ✅ Fixed 2026-07-30. ZIP member lookup now raises
       `FileNotFoundError` with the requested member name.
-- [ ] `open_data_file` returns a handle from a closed `ZipFile`; works only via
-      `ZipExtFile` refcounting
+- [x] `open_data_file` returns a handle from a closed `ZipFile`; works only via
+      `ZipExtFile` refcounting. ✅ Fixed 2026-07-30. The archive is now kept open for the
+      returned handle's lifetime and closed deterministically when the handle is closed;
+      output is unchanged. Regression test asserts the backing `ZipFile` is open while the
+      handle is live.
 - [x] Leading-slash zip member when `output_subpath=""`. ✅ Fixed 2026-07-30. ZIP output
       now normalizes empty or slash-terminated subpaths without creating a leading slash.
 - [x] Zip `"a"` mode creates duplicate members if a run is not preceded by `delete_archive`. ✅ Fixed
