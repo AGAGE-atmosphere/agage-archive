@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `read_release_schedule` now handles schedule files without comment headers instead of raising `UnboundLocalError`.
 - `read_release_schedule` now applies species matching case-insensitively to both validation and row lookup.
 - `instrument_type` is now required by the variable schema, so missing values raise instead of being silently omitted.
+- `format_variables` now scopes its casting warning filter and restores the caller's warning configuration.
 
 ### Changed
 

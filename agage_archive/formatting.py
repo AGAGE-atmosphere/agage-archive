@@ -271,13 +271,11 @@ def format_variables(ds,
                 # This variable is optional and not present, so we can skip it
                 continue
 
-        # Error on warnings, in case casting to type causes problems
-        warnings.simplefilter("error")
-
-        var_temp[np.isnan(var_temp)] = missing_value
-        vars_out[var] = ("time", var_temp.copy().astype(typ))
-
-        warnings.simplefilter("default")
+        # Error on warnings during casting without changing the caller's filters.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            var_temp[np.isnan(var_temp)] = missing_value
+            vars_out[var] = ("time", var_temp.copy().astype(typ))
 
     # Create new dataset
     ds = xr.Dataset(vars_out,
