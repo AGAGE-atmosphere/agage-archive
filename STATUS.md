@@ -259,8 +259,9 @@ silently mis-align published data.
 
 ### Minor (batch into one commit)
 
-- [ ] `fnmatch.filter` shadows the builtin and raises `IndexError` rather than
-      `FileNotFoundError` on no match — [config.py:384](agage_archive/config.py#L384)
+- [x] `fnmatch.filter` shadows the builtin and raises `IndexError` rather than
+      `FileNotFoundError` on no match. ✅ Fixed 2026-07-30. ZIP member lookup now raises
+      `FileNotFoundError` with the requested member name.
 - [ ] `open_data_file` returns a handle from a closed `ZipFile`; works only via
       `ZipExtFile` refcounting
 - [ ] Leading-slash zip member when `output_subpath=""` — [io.py:1402](agage_archive/io.py#L1402)
