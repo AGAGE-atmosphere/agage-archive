@@ -289,6 +289,9 @@ def test_picarro():
     # Check that instrument_type has been added
     assert ds.attrs["instrument_type"] == "Picarro"
 
+    for attr in ["inlet_base_elevation_masl", "inlet_latitude", "inlet_longitude"]:
+        assert isinstance(ds.attrs[attr], str)
+
     # Check that NaNs are removed
     assert ds.mf.notnull().all()
 
