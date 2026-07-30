@@ -206,10 +206,10 @@ silently mis-align published data.
 - [x] **B9 — flask + baseline fails via the generic handler.** ✅ Fixed 2026-07-29.
       Baseline and monthly products are skipped when `read_baseline_function is None`;
       the `NotImplementedError` for "monthly without baseline" is preserved.
-- [ ] **B10 — `warnings.simplefilter` used as a global toggle.**
+- [x] **B10 — `warnings.simplefilter` used as a global toggle.** ✅ Fixed 2026-07-30.
       [formatting.py:275-280](agage_archive/formatting.py#L275-L280) clobbers the caller's
-      warning configuration and does not restore it on exception. Fix:
-      `with warnings.catch_warnings():`.
+      warning configuration and did not restore it on exception. Wrapped the cast in
+      `warnings.catch_warnings()` and covered filter restoration with a regression test.
 - [ ] **B11 — module-level filesystem walk at import.**
       [io_other_formats.py:11](agage_archive/io_other_formats.py#L11) runs `Paths()` at
       import time and can raise on import; [line 52](agage_archive/io_other_formats.py#L52)

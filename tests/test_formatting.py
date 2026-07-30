@@ -8,6 +8,7 @@ import json
 from agage_archive.config import open_data_file, data_file_path
 from agage_archive.run import run_individual_instrument
 from agage_archive.formatting import format_attributes
+from agage_archive.formatting import format_variables
 
 
 def check_cf_compliance(dataset):
@@ -60,6 +61,28 @@ def test_variable_schema():
         assert definition["encoding"]["dtype"] in valid_dtypes, variable
         if "resample_method" in definition:
             assert definition["resample_method"] in valid_resample_methods, variable
+
+
+def test_format_variables_restores_warning_filters():
+    ds = xr.Dataset(
+        {"mf": ("time", np.array([1.0]))},
+        coords={"time": pd.date_range("2021-01-01", periods=1)},
+        attrs={"network": "agage_test", "species": "nf3", "calibration_scale": "SIO-05"},
+    )
+    ds["mf"].attrs["units"] = "1e-9"
+    with open_data_file("variables.json", this_repo=True) as f:
+        variables = json.load(f)
+    translation = {
+        variable: "mf"
+        for variable, definition in variables.items()
+        if variable != "time" and definition["optional"] == "False"
+    }
+    original_filters = warnings.filters[:]
+
+    try:
+        format_variables(ds, variable_translate=translation)
+    finally:
+        assert warnings.filters == original_filters
 
 
 def test_cf_compliance(clean_output):
