@@ -1,6 +1,7 @@
 from pathlib import Path
 import yaml
 import json
+import pytest
 
 from agage_archive.config import Paths, data_file_path, \
     open_data_file, data_file_list, output_path, archive_suffix
@@ -146,3 +147,29 @@ def test_archive_suffix():
     assert archive_suffix("folder", "-csv") == "folder-csv"
 
     assert archive_suffix(Path("archive.zip"), "-csv").name == Path("archive-csv.zip").name
+
+
+def test_error_mode_matrix():
+    """Document current error handling for directory and zip inputs."""
+    modes = ("raise", "ignore", "ignore_inputs", "ignore_outputs")
+
+    for mode in modes:
+        directory_path = data_file_path(
+            "test.txt", "agage_test", "path_test_files", errors=mode)
+        assert directory_path == repo_path / "data/agage_test/path_test_files/test.txt"
+
+        zip_path = data_file_path(
+            "B/C.txt", "agage_test", "path_test_files/A.zip", errors=mode)
+        assert zip_path == repo_path / "data/agage_test/path_test_files/A.zip"
+
+        directory_missing = data_file_path(
+            "missing.txt", "agage_test", "path_test_files", errors=mode)
+        assert directory_missing == repo_path / "data/agage_test/path_test_files/missing.txt"
+
+        if mode == "raise":
+            with pytest.raises(FileNotFoundError):
+                data_file_path(
+                    "missing.txt", "agage_test", "path_test_files/A.zip", errors=mode)
+        else:
+            assert data_file_path(
+                "missing.txt", "agage_test", "path_test_files/A.zip", errors=mode) is None
