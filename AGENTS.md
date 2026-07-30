@@ -73,12 +73,28 @@ python -m pytest -q                                  # full suite, ~25 s
 python -m pytest -q --cov=agage_archive --cov-report=term-missing
 ```
 
+**Do not install, upgrade, or remove packages or otherwise modify the conda environment.**
+Until this repository moves to `uv`, dependency changes are handled manually by the
+maintainer. If a command fails because a package is missing or incompatible, stop and
+report the exact package name and any known version constraint so the maintainer can
+update the `agage` environment. Do not run `conda install`, `pip install`, or equivalent
+commands, and do not work around a missing dependency by changing project code.
+
 The package needs `agage_archive/config.yaml`, which is not in version control. Create it
 with `python agage_archive/config.py` if it is missing. Tests run against the `agage_test`
 network in `data/agage_test/`.
 
 ## Working practices
 
+- **Make changes on a dedicated branch and submit them through a pull request.** Before
+  editing, confirm that the current branch is not `main`; if it is, create a new,
+  descriptively named branch from the latest `main`. Keep unrelated tasks on separate
+  branches. When the work is complete, commit it, push the branch, and open an associated
+  GitHub pull request with the changes and test results. Do not commit directly to `main`
+  or merge the pull request unless explicitly asked.
+- **Keep `STATUS.md` current for every PR.** Before opening or updating a PR, set its
+  `Branch` and `Last updated` fields to the current branch and date, update any relevant
+  checkboxes and issue references, and record material decisions or test results.
 - **Run the tests before and after every change.** The suite is fast; there is no excuse
   for skipping it. Report failures with the actual output rather than summarising.
 - **Add the test first when fixing a bug.** Several bugs in this codebase sat in
