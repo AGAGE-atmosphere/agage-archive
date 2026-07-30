@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (run_all/combine_datasets structure review — P6, S6)
+**Last updated:** 2026-07-30 (T1 run.py tests done; run_all/combine_datasets review — P6, S6)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -331,11 +331,15 @@ modulo the three volatile attributes.
 
 ## Phase 3 — Test coverage
 
-- [ ] **T1 — `run.py` unit tests** (29% → target 80%): the release-schedule `"x"` skip; the
-      `top_level_only` conflict raise ([run.py:146](agage_archive/run.py#L146)); the
-      single-instrument early return ([run.py:168](agage_archive/run.py#L168)); and the
-      error-log path — deliberately break one species and assert it lands in the log with a
-      useful message.
+- [x] **T1 — `run.py` unit tests** (29% → 87%, target 80%). ✅ Done 2026-07-30 in
+      [tests/test_run.py](tests/test_run.py). Covers the release-schedule `"x"` skip; the
+      unknown-species skip in `run_individual_instrument`; the single-instrument promotion
+      to the top-level directory; the early-return deferral when a combined file already
+      owns the top-level slot (`cfc-113` at CGO); the `top_level_only` conflict raise; the
+      error-log path (a broken species is logged with its site/species/message while a
+      healthy one in the same call is not); and the `run_all` isinstance validation wall
+      (S3). Written ahead of S6, so that refactor can be checked against intended behaviour
+      rather than only the byte-level manifest.
 - [x] **T2 — Timestamp-mismatch tests** for `run_timestamp_checks` covering B2 and B3.
       ✅ Done 2026-07-29 in [tests/test_run.py](tests/test_run.py), along with targeted
       tests for the determinism fixes, `data_combination_species`, the contested
