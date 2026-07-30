@@ -23,6 +23,17 @@ def test_choose_scale_defaults_file():
     assert choose_scale_defaults_file("agage_test", "test") == "defaults_test"
 
 
+def test_choose_scale_defaults_file_tie_break_is_stable():
+    files = [
+        "scale_defaults_test_cgo.csv",
+        "scale_defaults_test_mhd.csv",
+        "scale_defaults_test.csv",
+    ]
+    with patch("agage_archive.data_selection.data_file_list",
+               return_value=("agage_test", "", files)):
+        assert choose_scale_defaults_file("agage_test", "test", site="CGO") == "defaults_test_cgo"
+
+
 def test_calibration_scale_defaults():
     '''Test calibration_scale_default function'''
 
