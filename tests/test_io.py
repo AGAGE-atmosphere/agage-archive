@@ -358,7 +358,7 @@ def test_read_gcwerks_flask():
 
     # Check that some attributes that are only in site attributes have been added
     assert "sampling_period" in ds.attrs.keys()
-    assert ds.attrs["inlet_latitude"] == 2
+    assert ds.attrs["inlet_latitude"] == "2"
 
     # Test flask_pair_agreement parameter
     ds_default = read_gcwerks_flask("agage_test", "cf4", "CBW", "GCMS-Medusa-flask",

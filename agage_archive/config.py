@@ -2,7 +2,7 @@ from pathlib import Path as _Path
 import tarfile
 from zipfile import ZipFile, ZIP_DEFLATED
 import yaml
-from fnmatch import fnmatch, filter
+from fnmatch import fnmatch
 import psutil
 from shutil import copy, rmtree
 import os
@@ -391,7 +391,10 @@ def open_data_file(filename,
 
     if pth.suffix == ".zip":
         with ZipFile(pth, mode) as z:
-            return z.open(filter(z.namelist(), filename)[0])
+            matches = [member for member in z.namelist() if fnmatch(member, filename)]
+            if not matches:
+                raise FileNotFoundError(f"Can't find {filename} in {pth}")
+            return z.open(matches[0])
     elif "tar.gz" in filename:
         return tarfile.open(pth / filename, f"{mode}:gz")
     else:

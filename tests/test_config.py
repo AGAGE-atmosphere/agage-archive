@@ -187,4 +187,9 @@ def test_invalid_error_mode_raises_value_error():
 
 def test_raise_mode_checks_missing_directory_file():
     with pytest.raises(FileNotFoundError, match="missing.txt"):
-        data_file_path("missing.txt", "agage_test", "path_test_files", errors="raise")
+                data_file_path("missing.txt", "agage_test", "path_test_files", errors="raise")
+
+
+def test_open_data_file_missing_zip_member_raises():
+    with pytest.raises(FileNotFoundError, match="missing.txt"):
+        open_data_file("missing.txt", "agage_test", "path_test_files/A.zip")
