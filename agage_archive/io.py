@@ -634,7 +634,7 @@ def read_ale_gage(network, species, site, instrument,
                 "inlet_latitude": site_info[site]["latitude"],
                 "inlet_longitude": site_info[site]["longitude"],
                 "inlet_comment": "",
-                "site_code": site,
+                "site_code": site.upper(),
                 "product_type": "mole fraction",
                 "instrument_selection": "Individual instruments",
                 "frequency": "high-frequency",}
@@ -917,7 +917,7 @@ def read_gcms_magnum(network, species,
     extra_attrs["instrument_selection"] = "Individual instruments"
     extra_attrs["frequency"] = "high-frequency"
     extra_attrs["instrument_type"] = get_instrument_type(get_instrument_number(instrument, network), network)
-    extra_attrs["site_code"] = site
+    extra_attrs["site_code"] = site.upper()
 
     # Add attributes
     ds = format_attributes(ds,
@@ -1093,7 +1093,7 @@ def read_gcwerks_flask(network, species, site, instrument,
         coords={"time": xr.coding.times.decode_cf_datetime(ds_raw["sample_time"].values - sampling_period/2,
                                                            units="seconds since 1970-01-01")},
         attrs={"comment": f"GCMS Medusa flask data for {species_search} at {site_info['station_long_name']}.",
-               "site_code": site}
+               "site_code": site.upper()}
     )
 
     # Sort by sampling time

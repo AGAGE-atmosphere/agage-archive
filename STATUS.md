@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (open_data_file ZIP handle lifetime)
+**Last updated:** 2026-07-30 (site_code casing consistency)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -277,11 +277,13 @@ silently mis-align published data.
       2026-07-30. Partial matches now prefer the longest instrument name.
 - [x] `choose_scale_defaults_file` broke ties using `data_file_list` order, which is
       filesystem glob order. ✅ Fixed 2026-07-30. Ties now use a stable filename sort.
-- [ ] `site_code` casing differs between readers: `read_nc` upper-cases
-      ([io.py:261](agage_archive/io.py#L261)), `read_ale_gage`
-      ([io.py:634](agage_archive/io.py#L634)) and `read_gcwerks_flask`
-      ([io.py:1093](agage_archive/io.py#L1093)) do not — so a lowercase site code silently
-      skips `attributes_site.json` lookup for ALE/GAGE
+- [x] `site_code` casing differs between readers. ✅ Fixed 2026-07-30. `read_nc` and
+      `read_baseline` already upper-cased `site_code`; `read_ale_gage`, `read_gcms_magnum`
+      and `read_gcwerks_flask` stored the raw `site` argument instead, so a lowercase or
+      mixed-case site code would silently fail the `attributes_site.json` lookup in
+      `format_attributes` (dict keys are upper-case) with no error. All readers now
+      upper-case `site_code` consistently; no effect on the fixture, whose site codes are
+      already upper-case.
 
 ---
 

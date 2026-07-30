@@ -66,6 +66,42 @@ def test_read_ale_gage():
         assert isinstance(ds_ale.attrs[attr], str)
 
 
+def test_read_ale_gage_site_code_uppercased():
+    """A lowercase site code must still end up as the canonical upper-case
+    form in output attributes, even though it is looked up in
+    ale_gage_sites.json under a lowercase alias here. Otherwise a
+    differently-cased site argument would silently produce a differently-cased
+    site_code, which feeds directly into the output filename."""
+
+    with open_data_file("ale_gage_sites.json", network="agage_test") as f:
+        site_info = json.load(f)
+    site_info["cgo"] = site_info["CGO"]
+
+    with open_data_file("ale_gage_timestamp_issues.json", network="agage_test") as f:
+        timestamp_issues = json.load(f)
+    timestamp_issues["ALE"]["cgo"] = timestamp_issues["ALE"]["CGO"]
+
+    real_open_data_file = open_data_file
+
+    def fake_open_data_file(filename, *args, **kwargs):
+        if filename == "ale_gage_sites.json":
+            return BytesIO(json.dumps(site_info).encode())
+        if filename == "ale_gage_timestamp_issues.json":
+            return BytesIO(json.dumps(timestamp_issues).encode())
+        return real_open_data_file(filename, *args, **kwargs)
+
+    # read_release_schedule does its own case-sensitive site lookup, which is
+    # out of scope here (tracked separately); skip it to isolate the site_code fix.
+    # tz_local_to_utc (in util.py) does its own ale_gage_sites.json lookup too.
+    with patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
+         patch("agage_archive.util.open_data_file", side_effect=fake_open_data_file), \
+         patch("agage_archive.io.read_release_schedule", return_value=None):
+        ds = read_ale_gage("agage_test", "ch3ccl3", "cgo", "ALE",
+                           data_exclude=False, dropna=False)
+
+    assert ds.attrs["site_code"] == "CGO"
+
+
 def test_combine_datasets():
 
     network = "agage_test"
@@ -386,6 +422,39 @@ def test_read_gcwerks_flask():
     assert len(ds_filtered.time) == len(ds_default.time) - 1
 
 
+def test_read_gcwerks_flask_site_code_uppercased():
+    """A lowercase site code (looked up here under a lowercase alias in
+    attributes_site.json) must still produce the canonical upper-case
+    site_code. Before this was fixed, a lowercase site_code would silently
+    fail the case-sensitive attributes_site.json lookup inside
+    format_attributes, dropping station metadata such as
+    station_long_name/inlet_latitude without any error."""
+
+    with open_data_file("attributes_site.json", network="agage_test") as f:
+        site_info_all = json.load(f)
+    site_info_all["cbw"] = site_info_all["CBW"]
+
+    real_open_data_file = open_data_file
+
+    def fake_open_data_file(filename, *args, **kwargs):
+        if filename == "attributes_site.json":
+            return BytesIO(json.dumps(site_info_all).encode())
+        return real_open_data_file(filename, *args, **kwargs)
+
+    # read_release_schedule and read_data_exclude do their own case-sensitive
+    # site lookups, which are out of scope here (tracked separately); skip
+    # them to isolate the site_code fix.
+    with patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
+         patch("agage_archive.formatting.open_data_file", side_effect=fake_open_data_file), \
+         patch("agage_archive.io.read_release_schedule", return_value=None):
+        ds = read_gcwerks_flask("agage_test", "cf4", "cbw", "GCMS-Medusa-flask",
+                                data_exclude=False)
+
+    assert ds.attrs["site_code"] == "CBW"
+    assert ds.attrs["station_long_name"] == "Cabauw (NL)"
+    assert ds.attrs["inlet_latitude"] == "2"
+
+
 def test_merge_duplicate_flask_measurements():
 
     time = pd.to_datetime([
@@ -523,7 +592,7 @@ def test_read_gcms_magnum():
     assert ds.attrs["instrument_type"] == "GCMS-Magnum"
     assert ds.attrs["product_type"] == "mole fraction"
     assert ds.attrs["frequency"] == "high-frequency"
-    assert ds.attrs["site_code"] == "MHD"    
+    assert ds.attrs["site_code"] == "MHD"
     assert isinstance(ds.attrs["inlet_base_elevation_masl"], str)
     assert isinstance(ds.attrs["inlet_latitude"], str)
     assert isinstance(ds.attrs["inlet_longitude"], str)
@@ -533,7 +602,7 @@ def test_read_gcms_magnum():
     assert ds.time.dt.day[0] == 13
     assert ds.time.dt.hour[0] == 23
     assert ds.time.dt.hour[0] == 23
-    assert ds.time.dt.minute[0] == 54        
+    assert ds.time.dt.minute[0] == 54
 
     # Release schedule says that the last year should be 1998
     assert ds.time.dt.year[-1] == 1998
@@ -541,6 +610,32 @@ def test_read_gcms_magnum():
     assert np.isclose(ds.mf.values[0], 9.303)
 
     assert ds.sampling_period.values[0] == 2400
+
+
+def test_read_gcms_magnum_site_code_uppercased():
+    """Same as test_read_ale_gage_site_code_uppercased: a lowercase site
+    argument (looked up here under a lowercase alias in ale_gage_sites.json)
+    must still produce the canonical upper-case site_code."""
+
+    with open_data_file("ale_gage_sites.json", network="agage_test") as f:
+        site_info = json.load(f)
+    site_info["mhd"] = site_info["MHD"]
+
+    real_open_data_file = open_data_file
+
+    def fake_open_data_file(filename, *args, **kwargs):
+        if filename == "ale_gage_sites.json":
+            return BytesIO(json.dumps(site_info).encode())
+        return real_open_data_file(filename, *args, **kwargs)
+
+    # read_release_schedule does its own case-sensitive site lookup, which is
+    # out of scope here (tracked separately); skip it to isolate the site_code fix.
+    with patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
+         patch("agage_archive.io.read_release_schedule", return_value=None):
+        ds = read_gcms_magnum("agage_test", "hfc-134a", site="mhd",
+                             data_exclude=False, dropna=True)
+
+    assert ds.attrs["site_code"] == "MHD"
 
 
 def test_define_instrument_type():
