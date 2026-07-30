@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (site_code casing consistency)
+**Last updated:** 2026-07-30 (T1 run.py tests done; run_all/combine_datasets review — P6, S6)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -310,6 +310,19 @@ best-value work in the plan.
 - [ ] **P5 — Stop calling `format_variables` two or three times per dataset.** It rebuilds
       the whole Dataset and re-reads three JSON files each time (`read_nc`, then
       `combine_datasets`).
+- [ ] **P6 — Cache the raw per-instrument read+resample shared by both workflows.** Every
+      source file is read and resampled once for the individual product
+      (`run_individual_site` → `read_function`) and again for the combined product
+      (`combine_datasets` → `_read_combined_instrument_datasets` → same `read_function`).
+      Cache the raw read+resample keyed on `(network, species, site, instrument)` and let
+      each workflow apply its own downstream transforms. **The two products legitimately
+      diverge *after* the raw read** — the individual file uses the instrument-specific
+      scale (`choose_scale_defaults_file(network, instrument, site)`) while the combined
+      file uses the `"combined"` scale, the combined path applies an extra
+      `read_data_exclude(..., combined=True)` layer, and it slices to the `data_combination`
+      date window — so the cache must sit before scale conversion, the combined exclusion,
+      and windowing, not after. This is a caching change, **not** a merge of the two
+      workflows (see decisions log 2026-07-30).
 
 **Target:** ≥40% reduction in wall time for a full `agage_test` run, byte-identical output
 modulo the three volatile attributes.
@@ -318,11 +331,15 @@ modulo the three volatile attributes.
 
 ## Phase 3 — Test coverage
 
-- [ ] **T1 — `run.py` unit tests** (29% → target 80%): the release-schedule `"x"` skip; the
-      `top_level_only` conflict raise ([run.py:146](agage_archive/run.py#L146)); the
-      single-instrument early return ([run.py:168](agage_archive/run.py#L168)); and the
-      error-log path — deliberately break one species and assert it lands in the log with a
-      useful message.
+- [x] **T1 — `run.py` unit tests** (29% → 87%, target 80%). ✅ Done 2026-07-30 in
+      [tests/test_run.py](tests/test_run.py). Covers the release-schedule `"x"` skip; the
+      unknown-species skip in `run_individual_instrument`; the single-instrument promotion
+      to the top-level directory; the early-return deferral when a combined file already
+      owns the top-level slot (`cfc-113` at CGO); the `top_level_only` conflict raise; the
+      error-log path (a broken species is logged with its site/species/message while a
+      healthy one in the same call is not); and the `run_all` isinstance validation wall
+      (S3). Written ahead of S6, so that refactor can be checked against intended behaviour
+      rather than only the byte-level manifest.
 - [x] **T2 — Timestamp-mismatch tests** for `run_timestamp_checks` covering B2 and B3.
       ✅ Done 2026-07-29 in [tests/test_run.py](tests/test_run.py), along with targeted
       tests for the determinism fixes, `data_combination_species`, the contested
@@ -376,6 +393,23 @@ Highest risk to output format — do last, once Phases 0–3 are green.
       readers accept and ignore `**kwargs`.
 - [ ] **S5 — Simplify the `errors=` contract in `config.py`** (see B4/B5), against the T3
       matrix.
+- [ ] **S6 — Collapse the parallelisation residue in `run_all`.** The per-site/per-species
+      split across `run_individual_instrument`/`run_individual_site` and
+      `run_combined_instruments`/`run_combined_site` — each inner function processing one
+      unit of work, returning a `(site, species, error)` tuple, the caller collecting the
+      tuples into a list and reducing it to an error log — is the leftover shape of an
+      abandoned attempt to map the inner function across a worker pool. Serially it is pure
+      indirection: it is why `run_individual_site` must be handed `rs`, `read_function`,
+      `read_baseline_function` and `instrument_out` as arguments instead of deriving them.
+      Simplify the control flow and argument threading. Safe against the golden manifest,
+      which pins output bytes and not call structure, **but gate on T1** — this refactor
+      moves exactly the error-log and `top_level_only`-conflict paths that T1 is meant to
+      cover, so write those tests first.
+
+**Note — the two workflows are deliberately *not* merged.** Reading each source file twice
+(once individual, once combined) is real but the two products differ in scale, exclusions
+and date-windowing, and the real cost is config re-parsing. See decisions log 2026-07-30;
+the shared raw read is addressed by P6, not by a structural merge here.
 
 ---
 
@@ -452,6 +486,7 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | B2 fixed after targeted tests showed the check was not merely weak but completely dead. Enabling it changes no output; it only means a genuine data/baseline mismatch now fails instead of being published. |
 | 2026-07-29 | B12 (`start_date` too early in individual-instrument files) was approved for a later PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
 | 2026-07-30 | B12 fix approved for landing: recompute `start_date` and `end_date` in `output_dataset` after final filtering. This intentionally changes published attributes on affected files; regenerate the golden manifest after review. |
+| 2026-07-30 | **Reviewed `run_all`/`combine_datasets` structure.** Two issues confirmed. (1) The per-site/per-species split and `(site, species, error)` tuple threading in `run_all` and the `run_*_instruments` functions is residue from an abandoned parallelisation attempt — added as S6 (Phase 4, gated on T1). (2) Each source file is read twice (individual + combined workflows), but the two products legitimately differ (instrument-specific vs `"combined"` scale, the extra `combined=True` exclusion, `data_combination` date-windowing) and the dominant cost is config re-parsing, not raw I/O. **Merging the two workflows was considered and rejected** — high output-risk for little gain, and it would also have to preserve the combined-before-individual ordering that the top-level-file existing check depends on. The genuinely shared work (raw read+resample, before the products diverge) is captured as a caching item, P6 (Phase 2), not a structural merge. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
 ### Open questions

@@ -12,7 +12,8 @@ import xarray as xr
 
 import agage_archive.run
 from agage_archive.data_selection import data_combination_species, read_data_combination
-from agage_archive.run import run_individual_instrument, run_timestamp_checks
+from agage_archive.run import run_all, run_combined_instruments, \
+    run_individual_instrument, run_timestamp_checks
 
 
 NETWORK = "agage_test"
@@ -231,3 +232,182 @@ def test_flask_with_baseline_produces_mole_fractions(clean_output, error_log_tex
     # Baseline products are skipped rather than half-written
     assert not list(clean_output.rglob("baseline-flags/*.nc"))
     assert not list(clean_output.rglob("monthly-baseline/*.nc"))
+
+
+# T1: run.py control flow
+# =======================
+#
+# These pin the branches of the individual/combined orchestration that the golden manifest
+# only exercises as a side effect: the release-schedule "x" skip, single- vs multi-instrument
+# folder choice, the top_level_only guard, and the error-log path. They exist so that the
+# Phase 4 (S6) rewrite of this control flow — which removes the leftover per-site/per-species
+# split and the (site, species, error) tuple threading — can be checked against the intended
+# behaviour rather than only against the byte-level manifest.
+
+
+def test_release_schedule_x_is_skipped(clean_output, error_log_text):
+    """A cell marked "x" means "process no part of this record": no file, no error.
+
+    ALE measures cfc-11 only at CGO in the fixture; every other site, including SMO, is
+    marked x. Processing SMO must produce nothing at all and must not be treated as a
+    failure.
+    """
+
+    run_individual_instrument(NETWORK, "ALE", species=["cfc-11"], sites=["SMO"],
+                              baseline="", monthly=False)
+
+    assert error_log_text() == ""
+    assert not list(clean_output.rglob("*.nc"))
+
+
+def test_unknown_species_for_instrument_is_skipped(clean_output, error_log_text):
+    """A species absent from the instrument's release schedule is skipped cleanly.
+
+    hfc-134a is a GCMS-Magnum species and has no row in the ALE schedule, so
+    run_individual_instrument has nothing to process and must return without writing a
+    file or an error.
+    """
+
+    run_individual_instrument(NETWORK, "ALE", species=["hfc-134a"], sites=["CGO"],
+                              baseline="", monthly=False)
+
+    assert error_log_text() == ""
+    assert not list(clean_output.rglob("*.nc"))
+
+
+def test_single_instrument_is_promoted_to_top_level(clean_output, error_log_text):
+    """One instrument and no data_combination entry: the file is also the recommended file.
+
+    nf3 at MHD is measured only by GCMS-Medusa, and MHD has no data_combination file, so
+    read_data_combination returns a single default instrument. The individual file is then
+    written both to individual-instruments/ and, as the recommended record, to the
+    top-level nf3/ directory (with no instrument in its name).
+    """
+
+    run_individual_instrument(NETWORK, "GCMS-Medusa", species=["nf3"], sites=["MHD"],
+                              baseline="", monthly=False)
+
+    assert error_log_text() == ""
+
+    top_level = list((clean_output / "nf3").glob("agage_test_mhd_nf3_*.nc"))
+    individual = list((clean_output / "nf3" / "individual-instruments").glob(
+        "agage_test-gcms-medusa_mhd_nf3_*.nc"))
+
+    assert top_level, "single-instrument file was not promoted to the top-level directory"
+    assert individual, "individual-instruments file was not written"
+
+
+def test_top_level_only_conflicts_with_multiple_instruments(clean_output, error_log_text):
+    """top_level_only is incompatible with a species that has a combined record.
+
+    ch3ccl3 at CGO is measured by four instruments and has a data_combination entry, so a
+    combined file owns the top-level slot. Asking an individual instrument to write only
+    the top-level file for it is a contradiction and must be reported, naming the species
+    and site.
+    """
+
+    run_individual_instrument(NETWORK, "GCMD", species=["ch3ccl3"], sites=["CGO"],
+                              baseline="", monthly=False, top_level_only=True)
+
+    errors = error_log_text()
+
+    assert "top_level_only is set to True" in errors
+    assert "ch3ccl3" in errors and "CGO" in errors
+
+
+def test_individual_instrument_defers_to_combined_top_level(monkeypatch, clean_output,
+                                                            error_log_text):
+    """When a combined file owns the top-level slot, the individual run must not rewrite it.
+
+    cfc-113 at CGO is a single-instrument (GAGE) species that nonetheless has a
+    data_combination entry, which marks it as the recommended record. Once the combined
+    workflow has written the top-level file, run_individual_site takes the early-return
+    path and writes only its individual-instruments file, leaving the top-level file to
+    the combined product.
+    """
+
+    run_combined_instruments(NETWORK, species=["cfc-113"], sites=["CGO"],
+                             baseline=False, monthly=False)
+    assert error_log_text() == ""
+    assert list((clean_output / "cfc-113").glob("agage_test_cgo_cfc-113_*.nc"))
+
+    real_output_dataset = agage_archive.run.output_dataset
+    written_subpaths = []
+
+    def spy(ds, network, output_subpath="", **kwargs):
+        written_subpaths.append(output_subpath)
+        return real_output_dataset(ds, network, output_subpath=output_subpath, **kwargs)
+
+    monkeypatch.setattr(agage_archive.run, "output_dataset", spy)
+
+    run_individual_instrument(NETWORK, "GAGE", species=["cfc-113"], sites=["CGO"],
+                              baseline="", monthly=False)
+
+    assert error_log_text() == ""
+    # Its own file is written...
+    assert "cfc-113/individual-instruments" in written_subpaths
+    # ...but the top-level file, owned by the combined product, is left untouched.
+    assert "cfc-113" not in written_subpaths
+
+
+def test_read_failure_is_logged_for_that_species_only(monkeypatch, clean_output,
+                                                       error_log_text):
+    """A failure in one species lands in the error log, naming it, and spares the others.
+
+    run_individual_site wraps each species in a broad except that appends to the error
+    log, so a failure is a missing file rather than a crash. Break the read for cfc-11 and
+    confirm it is logged with its site, species and message, while cfc-12 — read through
+    the same instrument in the same call — succeeds and is absent from the log.
+    """
+
+    real_get = agage_archive.run.get_data_read_function
+
+    def failing_get(network, instrument):
+        reader = real_get(network, instrument)
+
+        def wrapper(network, species, site, instrument, **kwargs):
+            if species == "cfc-11":
+                raise ValueError("synthetic read failure")
+            return reader(network, species, site, instrument, **kwargs)
+
+        wrapper.__name__ = reader.__name__
+        return wrapper
+
+    monkeypatch.setattr(agage_archive.run, "get_data_read_function", failing_get)
+
+    run_individual_instrument(NETWORK, "ALE", species=["cfc-11", "cfc-12"], sites=["CGO"],
+                              baseline="", monthly=False)
+
+    errors = error_log_text()
+
+    assert "synthetic read failure" in errors
+    assert "cfc-11" in errors and "CGO" in errors
+    # cfc-12 was read through the same instrument and succeeded
+    assert "cfc-12" not in errors
+
+
+# run_all argument validation
+# ===========================
+#
+# The hand-written isinstance wall in run_all (Phase 4, S3). Cheap to pin because each
+# check raises before any processing or filesystem side effect.
+
+
+def test_run_all_requires_a_network():
+    with pytest.raises(ValueError, match="Must specify network"):
+        run_all("")
+
+
+def test_run_all_rejects_non_string_network():
+    with pytest.raises(TypeError, match="network must be a string"):
+        run_all(123)
+
+
+def test_run_all_rejects_non_list_species():
+    with pytest.raises(TypeError, match="species must be a list"):
+        run_all(NETWORK, species="ch3ccl3")
+
+
+def test_run_all_rejects_non_bool_baseline():
+    with pytest.raises(TypeError, match="baseline must be a boolean"):
+        run_all(NETWORK, baseline="yes")
