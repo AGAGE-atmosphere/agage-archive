@@ -176,18 +176,18 @@ silently mis-align published data.
 - [x] **B3 — `if ds_baseline:` is Dataset truthiness.** ✅ Fixed 2026-07-29 in
       `run_timestamp_checks` and `run_individual_site`. Covered by
       [tests/test_run.py](tests/test_run.py).
-- [ ] **B4 — `data_file_path` returns `None` silently.**
+- [x] **B4 — `data_file_path` returns `None` silently.** ✅ Fixed 2026-07-30.
       [config.py:335-340](agage_archive/config.py#L335-L340). Zip + missing member +
       `errors="ignore"` returns `None`; callers fail later with an unrelated
       `AttributeError`. The directory branch with `errors="raise"` returns a path to a
-      non-existent file *without* raising — the two branches disagree about what `errors`
-      means. Current behavior is pinned by T3; fix alongside B5.
-- [ ] **B5 — `errors=` is four undocumented magic strings.** Current behavior is pinned by
-      T3. `raise`, `ignore`,
+      non-existent file *without* raising — the two branches disagreed about what `errors`
+      means. `data_file_path` now raises consistently for missing files in `raise` mode.
+- [x] **B5 — `errors=` is four undocumented magic strings.** ✅ Fixed 2026-07-30.
+      `raise`, `ignore`,
       `ignore_inputs`, `ignore_outputs`; the `Paths` docstring says the default is `raise`
       when it is `ignore`; [config.py:261](agage_archive/config.py#L261) uses substring
-      matching (`"ignore" in errors`) which matches all three ignore variants. Simplify
-      only after reviewing the matrix.
+      matching (`"ignore" in errors`) which matches all three ignore variants. Invalid
+      values now raise `ValueError` with the accepted modes.
 - [ ] **B6 — unbound local in `read_release_schedule`.**
       [data_selection.py:97-103](agage_archive/data_selection.py#L97-L103). `pos` is only
       assigned inside the comment-scanning loop, so a schedule file whose first line is not
@@ -324,8 +324,8 @@ modulo the three volatile attributes.
       true severity of B2.
 - [x] **T3 — `config.py` error-mode matrix.** ✅ Done 2026-07-30. Parametrised
       `{raise, ignore, ignore_inputs, ignore_outputs}` × `{zip, dir}` ×
-      `{file present, absent}` and pinned the current behavior in `tests/test_config.py`.
-      Prerequisite for B4/B5.
+      `{file present, absent}` and pinned the corrected behavior in `tests/test_config.py`.
+      It remains the regression test for B4/B5.
 - [ ] **T4 — Schema test over `data/variables.json` and `attributes.json`:** every entry has
       `optional` ∈ {`"True"`, `"False"`}, `remove_flagged` ∈ {`"True"`, `"False"`, `"Zero"`},
       an `encoding.dtype` present in `nc4_types`, and a `resample_method` handled by

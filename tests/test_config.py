@@ -162,9 +162,14 @@ def test_error_mode_matrix():
             "B/C.txt", "agage_test", "path_test_files/A.zip", errors=mode)
         assert zip_path == repo_path / "data/agage_test/path_test_files/A.zip"
 
-        directory_missing = data_file_path(
-            "missing.txt", "agage_test", "path_test_files", errors=mode)
-        assert directory_missing == repo_path / "data/agage_test/path_test_files/missing.txt"
+        if mode == "raise":
+            with pytest.raises(FileNotFoundError):
+                data_file_path(
+                    "missing.txt", "agage_test", "path_test_files", errors=mode)
+        else:
+            directory_missing = data_file_path(
+                "missing.txt", "agage_test", "path_test_files", errors=mode)
+            assert directory_missing == repo_path / "data/agage_test/path_test_files/missing.txt"
 
         if mode == "raise":
             with pytest.raises(FileNotFoundError):
@@ -173,3 +178,13 @@ def test_error_mode_matrix():
         else:
             assert data_file_path(
                 "missing.txt", "agage_test", "path_test_files/A.zip", errors=mode) is None
+
+
+def test_invalid_error_mode_raises_value_error():
+    with pytest.raises(ValueError, match="Unknown errors mode"):
+        data_file_path("test.txt", "agage_test", "path_test_files", errors="unexpected")
+
+
+def test_raise_mode_checks_missing_directory_file():
+    with pytest.raises(FileNotFoundError, match="missing.txt"):
+        data_file_path("missing.txt", "agage_test", "path_test_files", errors="raise")
