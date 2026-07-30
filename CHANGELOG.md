@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The check that a baseline file has the same timestamps as its mole fraction file could never fire. `(ds_baseline.time != ds.time).any()` is an xarray comparison, which aligns both operands on the time coordinate before comparing, so every timestamp was compared with itself and the result was always `False` — for any input, including two datasets with no timestamps in common. It now compares the raw values. This was dead code in both `run_timestamp_checks` and `run_individual_site`; enabling it revealed no problems in existing data, but a genuine mismatch will now be caught instead of published.
 - `run_timestamp_checks` tested an `xarray.Dataset` for truthiness, so an empty baseline dataset silently skipped the duplicate-timestamp and timestamp-alignment checks rather than failing them.
 - `read_nc` now sorts inputs with non-monotonic timestamps. This path previously passed an unsupported `inplace` argument to `xarray.Dataset.sortby` and crashed instead of returning the data in timestamp order.
+- `data_file_path` now validates `errors` modes and consistently raises `FileNotFoundError` for missing files when `errors="raise"`, including files in directories.
 
 ### Changed
 

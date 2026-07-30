@@ -8,6 +8,9 @@ from shutil import copy, rmtree
 import os
 
 
+ERROR_MODES = {"raise", "ignore", "ignore_inputs", "ignore_outputs"}
+
+
 class Paths():
 
     def __init__(self,
@@ -32,6 +35,10 @@ class Paths():
             FileNotFoundError: If folder or zip archive doesn't exist
             FileNotFoundError: If folder or zip archive is not a folder or zip archive   
         """
+
+        if errors not in ERROR_MODES:
+            raise ValueError(
+                f"Unknown errors mode {errors!r}; expected one of {sorted(ERROR_MODES)}")
 
         # Get repository root
         # Do this by finding the location of the .git folder in the working directory
@@ -339,6 +346,9 @@ def data_file_path(filename,
             if errors == "raise":
                 raise FileNotFoundError(f"Can't find {filename} in {pth}")
     else:
+        file_path = pth / filename
+        if errors == "raise" and not file_path.exists():
+            raise FileNotFoundError(f"Can't find file {file_path}")
         return pth / filename
 
 
