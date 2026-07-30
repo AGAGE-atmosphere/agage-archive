@@ -1,4 +1,5 @@
 import numpy as np
+from functools import lru_cache
 
 from agage_archive.config import data_file_list
 
@@ -76,6 +77,32 @@ minimum_averaging_period = {"Picarro": "1H"}
 instrument_selection_text = "Recommended instrument(s) selected and combined by station PIs"
 
 
+@lru_cache(maxsize=None)
+def _define_instrument_number_cached(network):
+    '''Build the instrument-number map for a network (memoised).
+
+    The release-schedule directory is static within a run, but this is called per dataset
+    and per variable (via instrument_type_definition), so listing and sorting it every
+    time is pure overhead. Keyed on network; do not mutate the result.
+    '''
+
+    instrument_number = {"UNDEFINED": -1,}
+
+    _, _, files = data_file_list(network,
+                            sub_path = "data_release_schedule",
+                            pattern = "data_release_schedule_*.csv",)
+
+    if not files:
+        raise FileNotFoundError("No data release schedule files found for the specified network.")
+
+    counter = 0
+    for f in sorted(files):
+        instrument_number[f.split("_")[-1].split(".")[0]] = counter
+        counter += 1
+
+    return instrument_number
+
+
 def define_instrument_number(network):
     '''Define instrument numbers for each instrument type based on data release schedule files
 
@@ -86,21 +113,9 @@ def define_instrument_number(network):
         dict: Dictionary of instrument numbers
     '''
 
-    instrument_number = {"UNDEFINED": -1,}
-
-    _, _, files = data_file_list(network,
-                            sub_path = "data_release_schedule",
-                            pattern = "data_release_schedule_*.csv",)
-    
-    if not files:
-        raise FileNotFoundError("No data release schedule files found for the specified network.")
-    
-    counter = 0
-    for f in sorted(files):
-        instrument_number[f.split("_")[-1].split(".")[0]] = counter
-        counter += 1
-
-    return instrument_number
+    # Fresh copy per call: the cached map is shared, and callers should be free to treat
+    # the returned dict as their own.
+    return dict(_define_instrument_number_cached(network))
 
 
 def instrument_type_definition(network):
