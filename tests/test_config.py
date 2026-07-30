@@ -193,3 +193,35 @@ def test_raise_mode_checks_missing_directory_file():
 def test_open_data_file_missing_zip_member_raises():
     with pytest.raises(FileNotFoundError, match="missing.txt"):
         open_data_file("missing.txt", "agage_test", "path_test_files/A.zip")
+
+
+def _backing_zipfile(handle):
+    """Return the ZipFile that backs a ZipExtFile returned by open_data_file.
+
+    The member handle keeps its archive alive through the ZipFile._fpclose
+    bound method stored on its shared file object; this reaches it so a test can
+    assert the archive is still open.
+    """
+    return handle._fileobj._close.__self__
+
+
+def test_open_data_file_zip_handle_keeps_archive_open():
+    """The returned zip member handle must not read from a closed archive.
+
+    Regression test: previously the ZipFile was closed before returning, so the
+    handle only stayed readable by accident via CPython's ZipExtFile reference
+    counting. The archive must stay open for the handle's lifetime and be closed
+    when the handle is closed.
+    """
+    handle = open_data_file("B/C.txt", "agage_test", "path_test_files/A.zip")
+    try:
+        zipf = _backing_zipfile(handle)
+        assert zipf.fp is not None, "backing ZipFile was closed while handle live"
+        # The handle is fully usable, including random access.
+        assert handle.read().decode("utf-8") == "test"
+        handle.seek(0)
+        assert handle.read().decode("utf-8") == "test"
+    finally:
+        handle.close()
+    # Closing the handle deterministically closes the archive (no GC needed).
+    assert zipf.fp is None
