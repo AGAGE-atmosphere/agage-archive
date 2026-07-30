@@ -188,11 +188,11 @@ silently mis-align published data.
       when it is `ignore`; [config.py:261](agage_archive/config.py#L261) uses substring
       matching (`"ignore" in errors`) which matches all three ignore variants. Invalid
       values now raise `ValueError` with the accepted modes.
-- [ ] **B6 — unbound local in `read_release_schedule`.**
+- [x] **B6 — unbound local in `read_release_schedule`.** ✅ Fixed 2026-07-30.
       [data_selection.py:97-103](agage_archive/data_selection.py#L97-L103). `pos` is only
       assigned inside the comment-scanning loop, so a schedule file whose first line is not
-      a comment raises `UnboundLocalError` at `f.seek(pos)`. Latent today; a trap for new
-      networks.
+      a comment raised `UnboundLocalError` at `f.seek(pos)`. Initialize the rewind position
+      before scanning; covered by a no-comment-header in-memory schedule test.
 - [ ] **B7 — species case mismatch between validation and lookup.**
       [data_selection.py:122-131](agage_archive/data_selection.py#L122-L131) and
       [data_selection.py:197-200](agage_archive/data_selection.py#L197-L200) validate with
