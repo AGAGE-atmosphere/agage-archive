@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `read_nc` now sorts inputs with non-monotonic timestamps. This path previously passed an unsupported `inplace` argument to `xarray.Dataset.sortby` and crashed instead of returning the data in timestamp order.
 - `data_file_path` now validates `errors` modes and consistently raises `FileNotFoundError` for missing files when `errors="raise"`, including files in directories.
 - `read_release_schedule` now handles schedule files without comment headers instead of raising `UnboundLocalError`.
+- `read_release_schedule` now applies species matching case-insensitively to both validation and row lookup.
 
 ### Changed
 

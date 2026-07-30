@@ -162,8 +162,11 @@ def read_release_schedule(network, instrument,
 
     if species is not None:
 
-        if format_species(species) not in df.index.str.lower():
+        species = format_species(species)
+        species_index = df.index[df.index.str.lower() == species.lower()]
+        if len(species_index) == 0:
             raise ValueError(f"No release schedule found for {species} at {site}")
+        species = species_index[0]
 
         if df.loc[species, site] == "x":
             # Return a value before any data was collected, to remove everything
