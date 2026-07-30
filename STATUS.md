@@ -210,11 +210,11 @@ silently mis-align published data.
       [formatting.py:275-280](agage_archive/formatting.py#L275-L280) clobbers the caller's
       warning configuration and did not restore it on exception. Wrapped the cast in
       `warnings.catch_warnings()` and covered filter restoration with a regression test.
-- [ ] **B11 — module-level filesystem walk at import.**
+- [x] **B11 — module-level filesystem walk at import.** ✅ Fixed 2026-07-30.
       [io_other_formats.py:11](agage_archive/io_other_formats.py#L11) runs `Paths()` at
-      import time and can raise on import; [line 52](agage_archive/io_other_formats.py#L52)
-      uses `delim_whitespace=True`, removed in pandas 3.0. 0% coverage — decide whether to
-      test it or delete it.
+      import time and could raise on import; [line 52](agage_archive/io_other_formats.py#L52)
+      used `delim_whitespace=True`, removed in pandas 3.0. Path resolution is now lazy and
+      whitespace parsing uses `sep=r"\s+"`; covered by import and parser tests.
 - [ ] **B12 — `start_date` is too early in individual-instrument files.** *Agreed to fix
       (2026-07-29), scheduled after the current PR.*
 

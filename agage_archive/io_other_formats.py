@@ -8,7 +8,6 @@ from fnmatch import fnmatch
 from agage_archive.config import Paths as Pth
 from agage_archive.util import tz_local_to_utc
 
-paths = Pth()
 home = Path.home()
 
 species_wang = {
@@ -49,7 +48,7 @@ def read_wang_file(file, header_lines=6):
     file.seek(0)
 
     # Read the file into a Pandas dataframe with correct headers
-    complete_data = pd.read_csv(file, skiprows=header_lines, delim_whitespace=True,
+    complete_data = pd.read_csv(file, skiprows=header_lines, sep=r"\s+",
                                 names=first_lines[header_lines-1].split(), encoding='ascii')
 
     complete_data.columns = complete_data.columns.astype(str)
@@ -93,6 +92,8 @@ def read_wang(species, site, network, instrument, utc = False):
     Returns:
         df (pd.DataFrame): Dataframe with one column for the species
     """
+
+    paths = Pth()
 
     # Read ale_gage_sites.json
     with open(paths.root.parent / f"data/{network}/ale_gage_sites.json", "r") as file:
