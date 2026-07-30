@@ -4,7 +4,6 @@ Working plan for the code-quality pass on `agage-archive`. Read
 [AGENTS.md](AGENTS.md) first — in particular the rule that output files and archive
 structure must not change.
 
-**Branch:** `fix-nonmonotonic-read-nc`
 **Started:** 2026-07-28
 **Last updated:** 2026-07-30
 
@@ -377,8 +376,6 @@ Highest risk to output format — do last, once Phases 0–3 are green.
 
 ### Now
 
-- [ ] Remove stray untracked files: `agage_archive/config copy.yaml`,
-      `data/agage_test/data-gcms-flask-nc/cf4_air.nc.BACKUP`
 - [ ] Add CI — there is no `.github/workflows`. The suite runs in ~25 s; running it on
       every PR is the cheapest guarantee that the golden manifest keeps working.
 - [ ] Add `pytest` and `pytest-cov` as test dependencies — neither is declared anywhere,

@@ -92,9 +92,10 @@ network in `data/agage_test/`.
   branches. When the work is complete, commit it, push the branch, and open an associated
   GitHub pull request with the changes and test results. Do not commit directly to `main`
   or merge the pull request unless explicitly asked.
-- **Keep `STATUS.md` current for every PR.** Before opening or updating a PR, set its
-  `Branch` and `Last updated` fields to the current branch and date, update any relevant
-  checkboxes and issue references, and record material decisions or test results.
+- **Keep `STATUS.md` current for every PR.** Before opening or updating a PR, update its
+  `Last updated` date, relevant checkboxes and issue references, and record material
+  decisions or test results. Do not add branch-specific metadata to STATUS; the active
+  branch and PR already provide that context.
 - **Run the tests before and after every change.** The suite is fast; there is no excuse
   for skipping it. Report failures with the actual output rather than summarising.
 - **Add the test first when fixing a bug.** Several bugs in this codebase sat in
