@@ -506,6 +506,9 @@ def test_read_gcms_magnum():
     assert ds.attrs["product_type"] == "mole fraction"
     assert ds.attrs["frequency"] == "high-frequency"
     assert ds.attrs["site_code"] == "MHD"    
+    assert isinstance(ds.attrs["inlet_base_elevation_masl"], str)
+    assert isinstance(ds.attrs["inlet_latitude"], str)
+    assert isinstance(ds.attrs["inlet_longitude"], str)
 
     assert ds.time.dt.year[0] == 1994
     assert ds.time.dt.month[0] == 10

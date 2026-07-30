@@ -249,11 +249,13 @@ silently mis-align published data.
       computed too early" rather than this one instance, and subsumes the existing
       `end_date` special case. Changes an attribute on ~618 files in the real archive.
 
-- [ ] **B13 — Magnum inlet attributes have inconsistent types** (#171). Magnum files
+- [x] **B13 — Magnum inlet attributes have inconsistent types** (#171). ✅ Fixed 2026-07-30.
+      Magnum files
       expose `inlet_base_elevation_masl`, `inlet_latitude`, and `inlet_longitude` as
       `np.float64`, while other readers expose them as strings. Confirm the archive schema's
       intended type, add a regression test, and record the output-format decision before
-      changing published attributes.
+      changing published attributes. Global inlet attributes are now serialized as strings
+      at the formatting boundary, matching the archive schema and other readers.
 
 ### Minor (batch into one commit)
 

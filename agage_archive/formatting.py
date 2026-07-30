@@ -439,6 +439,10 @@ def format_attributes(ds, instruments = [],
             if attr in extra_attributes:
                 attrs[attr] = extra_attributes[attr]
 
+    for attr in ["inlet_base_elevation_masl", "inlet_latitude", "inlet_longitude"]:
+        if attrs[attr] != "":
+            attrs[attr] = str(attrs[attr])
+
     # Format certain key attributes, and determine if they have been set as keywords
     for v in ["species", "calibration_scale", "network"]:
         attrs[v] = lookup_locals_and_attrs(v, locals(), ds.attrs.copy())
