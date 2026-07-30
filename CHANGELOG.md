@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `format_variables` now scopes its casting warning filter and restores the caller's warning configuration.
 - The optional Wang reader no longer resolves paths at module import and now uses the pandas-compatible whitespace separator syntax.
 - Output datasets now recompute both `start_date` and `end_date` after final release-date filtering, so individual files no longer report the source record's earlier start date.
+- Global inlet latitude, longitude, and base elevation attributes are now serialized consistently as strings.
 
 ### Changed
 

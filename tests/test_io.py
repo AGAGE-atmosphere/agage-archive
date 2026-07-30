@@ -62,6 +62,9 @@ def test_read_ale_gage():
     for var_name in ds_ale.data_vars.keys():
         type_test(ds_ale[var_name].values[0], var_name)
 
+    for attr in ["inlet_base_elevation_masl", "inlet_latitude", "inlet_longitude"]:
+        assert isinstance(ds_ale.attrs[attr], str)
+
 
 def test_combine_datasets():
 
@@ -286,6 +289,9 @@ def test_picarro():
     # Check that instrument_type has been added
     assert ds.attrs["instrument_type"] == "Picarro"
 
+    for attr in ["inlet_base_elevation_masl", "inlet_latitude", "inlet_longitude"]:
+        assert isinstance(ds.attrs[attr], str)
+
     # Check that NaNs are removed
     assert ds.mf.notnull().all()
 
@@ -506,6 +512,9 @@ def test_read_gcms_magnum():
     assert ds.attrs["product_type"] == "mole fraction"
     assert ds.attrs["frequency"] == "high-frequency"
     assert ds.attrs["site_code"] == "MHD"    
+    assert isinstance(ds.attrs["inlet_base_elevation_masl"], str)
+    assert isinstance(ds.attrs["inlet_latitude"], str)
+    assert isinstance(ds.attrs["inlet_longitude"], str)
 
     assert ds.time.dt.year[0] == 1994
     assert ds.time.dt.month[0] == 10
