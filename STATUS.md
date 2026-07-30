@@ -4,7 +4,6 @@ Working plan for the code-quality pass on `agage-archive`. Read
 [AGENTS.md](AGENTS.md) first — in particular the rule that output files and archive
 structure must not change.
 
-**Branch:** `fix-nonmonotonic-read-nc`
 **Started:** 2026-07-28
 **Last updated:** 2026-07-30
 
