@@ -1435,7 +1435,9 @@ def output_write(ds, out_path, filename,
     # Write file
     if out_path.suffix == ".zip":
         with ZipFile(out_path, mode="a", compression=ZIP_DEFLATED, compresslevel=6) as zip:
-            zip.writestr(output_subpath + "/" + filename, ds.to_netcdf())
+            member_path = "/".join(part for part in output_subpath.split("/") if part)
+            member_path = f"{member_path}/{filename}" if member_path else filename
+            zip.writestr(member_path, ds.to_netcdf())
     
     else:
         # Test if output_path exists and if not create it

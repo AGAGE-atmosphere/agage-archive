@@ -264,7 +264,8 @@ silently mis-align published data.
       `FileNotFoundError` with the requested member name.
 - [ ] `open_data_file` returns a handle from a closed `ZipFile`; works only via
       `ZipExtFile` refcounting
-- [ ] Leading-slash zip member when `output_subpath=""` — [io.py:1402](agage_archive/io.py#L1402)
+- [x] Leading-slash zip member when `output_subpath=""`. ✅ Fixed 2026-07-30. ZIP output
+      now normalizes empty or slash-terminated subpaths without creating a leading slash.
 - [ ] Zip `"a"` mode creates duplicate members if a run is not preceded by `delete_archive`
 - [ ] `if "time" in var` should be `var == "time"` — [data_selection.py:269](agage_archive/data_selection.py#L269)
 - [ ] Instrument partial-matching uses dict insertion order, not longest match —
