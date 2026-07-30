@@ -12,6 +12,10 @@ Update the checkboxes and the "Last updated" date as items land. Keep the findin
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
 `WONTFIX` with a one-line reason rather than deleting it.
 
+The full suite currently has an existing baseline failure: eight Picarro checksum
+differences in the golden manifest, reproduced on `origin/main` with the current
+environment. Do not regenerate the manifest until the cause is resolved.
+
 ---
 
 ## Baseline
@@ -178,12 +182,13 @@ silently mis-align published data.
       `errors="ignore"` returns `None`; callers fail later with an unrelated
       `AttributeError`. The directory branch with `errors="raise"` returns a path to a
       non-existent file *without* raising — the two branches disagree about what `errors`
-      means. Fix alongside B5.
-- [ ] **B5 — `errors=` is four undocumented magic strings.** `raise`, `ignore`,
+      means. Current behavior is pinned by T3; fix alongside B5.
+- [ ] **B5 — `errors=` is four undocumented magic strings.** Current behavior is pinned by
+      T3. `raise`, `ignore`,
       `ignore_inputs`, `ignore_outputs`; the `Paths` docstring says the default is `raise`
       when it is `ignore`; [config.py:261](agage_archive/config.py#L261) uses substring
-      matching (`"ignore" in errors`) which matches all three ignore variants. Pin current
-      behaviour with the Phase 3 matrix test *before* simplifying.
+      matching (`"ignore" in errors`) which matches all three ignore variants. Simplify
+      only after reviewing the matrix.
 - [ ] **B6 — unbound local in `read_release_schedule`.**
       [data_selection.py:97-103](agage_archive/data_selection.py#L97-L103). `pos` is only
       assigned inside the comment-scanning loop, so a schedule file whose first line is not
@@ -318,9 +323,10 @@ modulo the three volatile attributes.
       tests for the determinism fixes, `data_combination_species`, the contested
       top-level file error and the flask baseline skip. Writing them is what exposed the
       true severity of B2.
-- [ ] **T3 — `config.py` error-mode matrix.** Parametrise
+- [x] **T3 — `config.py` error-mode matrix.** ✅ Done 2026-07-30. Parametrised
       `{raise, ignore, ignore_inputs, ignore_outputs}` × `{zip, dir}` ×
-      `{file present, absent}` and pin the current behaviour. Prerequisite for B4/B5.
+      `{file present, absent}` and pinned the current behavior in `tests/test_config.py`.
+      Prerequisite for B4/B5.
 - [ ] **T4 — Schema test over `data/variables.json` and `attributes.json`:** every entry has
       `optional` ∈ {`"True"`, `"False"`}, `remove_flagged` ∈ {`"True"`, `"False"`, `"Zero"`},
       an `encoding.dtype` present in `nc4_types`, and a `resample_method` handled by
