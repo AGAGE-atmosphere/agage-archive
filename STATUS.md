@@ -4,9 +4,9 @@ Working plan for the code-quality pass on `agage-archive`. Read
 [AGENTS.md](AGENTS.md) first — in particular the rule that output files and archive
 structure must not change.
 
-**Branch:** `improved-tests`
+**Branch:** `fix-nonmonotonic-read-nc`
 **Started:** 2026-07-28
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-30
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
