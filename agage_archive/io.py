@@ -543,8 +543,7 @@ def read_ale_gage(network, species, site, instrument,
     paths = Paths(network)
 
     # Get data on ALE/GAGE sites
-    with open_data_file("ale_gage_sites.json", network = network, verbose=verbose) as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network=network)
 
     # Get species info
     with open_data_file("ale_gage_species.json", network = network, verbose=verbose) as f:
@@ -844,8 +843,7 @@ def read_gcms_magnum(network, species,
     """
 
     # Get data on ALE/GAGE sites
-    with open_data_file("ale_gage_sites.json", network = network, verbose=verbose) as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network=network)
 
     # Get species info
     with open_data_file("gcms-magnum_species.json", network = network, verbose=verbose) as f:

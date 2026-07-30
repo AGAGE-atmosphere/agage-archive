@@ -12,7 +12,7 @@ import unicodedata
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
-    output_path
+    output_path, load_json
 
 
 def is_number(s):
@@ -71,8 +71,7 @@ def tz_local_to_utc(index, network, site):
         pandas.DatetimeIndex: Datetime index in UTC
     """
 
-    with open_data_file("ale_gage_sites.json", network=network) as file:
-        site_info = json.load(file)
+    site_info = load_json("ale_gage_sites.json", network=network)
 
     tzoffset_hours = site_info[site]["tz"].split("UTC")[1]
 
