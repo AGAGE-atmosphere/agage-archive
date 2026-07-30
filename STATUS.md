@@ -270,8 +270,8 @@ silently mis-align published data.
       2026-07-30. Existing members are replaced when writing the same archive path.
 - [x] `if "time" in var` should be `var == "time"`. ✅ Fixed 2026-07-30. Variables whose
       names contain `time` are now processed normally during exclusions.
-- [ ] Instrument partial-matching uses dict insertion order, not longest match —
-      [definitions.py:165-170](agage_archive/definitions.py#L165-L170)
+- [x] Instrument partial-matching uses dict insertion order, not longest match. ✅ Fixed
+      2026-07-30. Partial matches now prefer the longest instrument name.
 - [ ] `choose_scale_defaults_file` breaks ties using `data_file_list` order, which is
       filesystem glob order. Not currently triggered (only one file matches any given
       instrument/site), but it is the same class of non-determinism fixed in Phase 0a —

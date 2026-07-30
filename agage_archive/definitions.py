@@ -167,7 +167,7 @@ def get_instrument_number(instrument, network):
         instrument_type = instrument_number[instrument]
     else:
         # If not, try to find a partial match (e.g., Picarro-1 -> Picarro)
-        for k, v in instrument_number.items():
+        for k, v in sorted(instrument_number.items(), key=lambda item: len(item[0]), reverse=True):
             if k in instrument:
                 instrument_type = v
                 break
