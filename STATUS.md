@@ -268,7 +268,8 @@ silently mis-align published data.
       now normalizes empty or slash-terminated subpaths without creating a leading slash.
 - [x] Zip `"a"` mode creates duplicate members if a run is not preceded by `delete_archive`. ✅ Fixed
       2026-07-30. Existing members are replaced when writing the same archive path.
-- [ ] `if "time" in var` should be `var == "time"` — [data_selection.py:269](agage_archive/data_selection.py#L269)
+- [x] `if "time" in var` should be `var == "time"`. ✅ Fixed 2026-07-30. Variables whose
+      names contain `time` are now processed normally during exclusions.
 - [ ] Instrument partial-matching uses dict insertion order, not longest match —
       [definitions.py:165-170](agage_archive/definitions.py#L165-L170)
 - [ ] `choose_scale_defaults_file` breaks ties using `data_file_list` order, which is
