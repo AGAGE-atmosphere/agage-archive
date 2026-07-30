@@ -19,12 +19,15 @@ frozen, and a manifest diff is exactly the thing that needs an explicit decision
 import hashlib
 import json
 import os
+import tempfile
 from pathlib import Path
+from zipfile import ZipFile
 
 import numpy as np
 import pytest
 import xarray as xr
 
+import agage_archive.config
 from agage_archive.config import data_file_path
 from agage_archive.run import run_all
 
@@ -113,30 +116,81 @@ def archive_manifest(root):
     return manifest
 
 
-@pytest.fixture(scope="module")
-def archive():
-    """Run the full archive once and return its manifest, plus any error logs.
+def _patch_config_output(monkeypatch, output_path_value):
+    """Redirect the agage_test output_path for the duration of a run.
+
+    Paths re-reads config.yaml (via yaml.safe_load) on every construction, so patching
+    the loader is the least invasive way to point the output somewhere else without
+    editing the user's config file. The guard leaves any non-config YAML untouched, so
+    only the network's output_path is affected.
+
+    Args:
+        monkeypatch (pytest.MonkeyPatch): Patcher to register the override on.
+        output_path_value (str): Value to substitute for the network's output_path.
+    """
+
+    real_safe_load = agage_archive.config.yaml.safe_load
+
+    def patched(stream):
+        loaded = real_safe_load(stream)
+        try:
+            network_paths = loaded["paths"][NETWORK]
+        except (TypeError, KeyError):
+            return loaded
+        loaded["paths"][NETWORK] = {**network_paths, "output_path": output_path_value}
+        return loaded
+
+    monkeypatch.setattr(agage_archive.config.yaml, "safe_load", patched)
+
+
+@pytest.fixture(scope="module", params=["directory", "zip"])
+def archive(request):
+    """Run the full archive once per output backend and return its manifest + error logs.
+
+    The directory and zip backends take different paths through config.py and io.py
+    (data_file_path, output_write, create_empty_archive, delete_archive); only the
+    directory path was covered before. Running the same golden manifest against zip output
+    pins the zip write path end to end — the path used by the downstream dvc-tracked
+    release repositories. Zip members are stored under their archive path with no stem
+    prefix, so extracting the archive reproduces the exact directory tree and the existing
+    reader compares against the same reference manifest.
 
     Returns:
         tuple[dict, list[str]]: Manifest, and the contents of any error log written.
     """
 
-    out_path = data_file_path("", network=NETWORK, sub_path="output", errors="ignore")
-    out_path.mkdir(parents=True, exist_ok=True)
+    out_dir = data_file_path("", network=NETWORK, sub_path="output", errors="ignore")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = out_dir.parent / "output.zip"
 
-    run_all(NETWORK,
-            delete=True,
-            combined=True,
-            baseline=True,
-            monthly=True)
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        if request.param == "zip":
+            _patch_config_output(monkeypatch, "output.zip")
 
-    error_logs = []
-    for name in ("error_log_individual.txt", "error_log_combined.txt"):
-        log = data_file_path(name, network=NETWORK, errors="ignore")
-        if log.exists():
-            error_logs.append(f"{name}:\n{log.read_text()}")
+        run_all(NETWORK,
+                delete=True,
+                combined=True,
+                baseline=True,
+                monthly=True)
 
-    return archive_manifest(out_path), error_logs
+        error_logs = []
+        for name in ("error_log_individual.txt", "error_log_combined.txt"):
+            log = data_file_path(name, network=NETWORK, errors="ignore")
+            if log.exists():
+                error_logs.append(f"{name}:\n{log.read_text()}")
+
+        if request.param == "zip":
+            with tempfile.TemporaryDirectory() as extract_dir:
+                with ZipFile(zip_path, "r") as archive_zip:
+                    archive_zip.extractall(extract_dir)
+                manifest = archive_manifest(extract_dir)
+        else:
+            manifest = archive_manifest(out_dir)
+
+    if request.param == "zip" and zip_path.exists():
+        zip_path.unlink()
+
+    return manifest, error_logs
 
 
 @pytest.mark.slow
