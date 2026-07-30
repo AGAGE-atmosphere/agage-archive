@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (T1 run.py tests done; run_all/combine_datasets review — P6, S6)
+**Last updated:** 2026-07-30 (Phase 0 closed — golden test now covers zip output)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -84,7 +84,7 @@ would have frozen a ragged, half-broken archive as the reference.
 kinds, writes no error log, and is byte-identical across runs and across
 `PYTHONHASHSEED` values.
 
-## Phase 0 — Safety net (#38) ✅ MOSTLY DONE (2026-07-29)
+## Phase 0 — Safety net (#38) ✅ DONE (2026-07-30)
 
 - [x] **Golden archive manifest test** — `tests/test_archive.py`, reference at
       `tests/reference/archive_manifest.json` (127 entries). Pins per-file paths,
@@ -95,16 +95,25 @@ kinds, writes no error log, and is byte-identical across runs and across
 - [x] **Assert the error logs are empty** — `test_archive_has_no_errors`.
 - [x] **`conftest.py` fixture** isolating `data/agage_test/output`; `test_cf_compliance`
       no longer deletes the output tree as a side effect.
-- [ ] **Run the golden test against zip output as well as directory output.** Still
-      outstanding — these take different code paths through `config.py` and only the
-      directory path is covered. Needs the `errors=` behaviour pinned first (T3/B4/B5),
-      since the zip path is where `data_file_path` returns `None`.
+- [x] **Run the golden test against zip output as well as directory output.** ✅ Done
+      2026-07-30, once its prerequisite (T3/B4/B5) landed. The `archive` fixture in
+      `tests/test_archive.py` is parametrised over `{directory, zip}`: the zip variant
+      redirects `output_path` to `output.zip` by patching the config loader (no change to
+      the user's `config.yaml`), runs the full archive, then extracts the zip and reuses
+      the existing reader. Zip members carry no stem prefix, so the extracted tree and the
+      directory tree compare against the *same* reference manifest. The zip run's output is
+      byte-identical to the directory run — no zip-specific regression — which also
+      exercises the recent zip write-path fixes (member replacement, leading-slash
+      normalisation, kept-open handle) end to end. Both variants are `slow`-marked and
+      independently selectable (`-k zip` / `-k directory`).
 
 **Exit criteria met:** perturbing one character of a `long_name` in `data/variables.json`
 produces 84 manifest differences and fails the suite.
 
-**Suite:** 46 passed, ~2.5 min (the archive test is ~1 min; deselect with `-m "not slow"`).
-**Coverage:** 67% → 73% overall; `run.py` 29% → 72%.
+**Suite:** 89 passed (85 fast + 4 slow), fast tests ~32 s; the archive test now runs the
+full archive twice (directory + zip), ~2.5 min total. Deselect the slow pair with
+`-m "not slow"`.
+**Coverage:** 67% → 77% overall; `run.py` 29% → 87%.
 
 ---
 
