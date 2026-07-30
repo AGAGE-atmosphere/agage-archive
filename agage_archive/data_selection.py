@@ -198,7 +198,10 @@ def choose_scale_defaults_file(network, instrument, site=""):
     
     # Split the file name into parts, separated by '-'
     # Sort by the length of the parts, so that more specific files are checked first
-    scale_defaults_files_sorted = sorted(scale_defaults_files, key=lambda x: len(x.split("_")), reverse=True)
+    scale_defaults_files_sorted = sorted(
+        scale_defaults_files,
+        key=lambda x: (-len(x.split("_")), x),
+    )
 
     for file in scale_defaults_files_sorted:
         filename_parts = file.split(".")[0].split("_")

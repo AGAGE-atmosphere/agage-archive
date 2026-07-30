@@ -272,10 +272,8 @@ silently mis-align published data.
       names contain `time` are now processed normally during exclusions.
 - [x] Instrument partial-matching uses dict insertion order, not longest match. ✅ Fixed
       2026-07-30. Partial matches now prefer the longest instrument name.
-- [ ] `choose_scale_defaults_file` breaks ties using `data_file_list` order, which is
-      filesystem glob order. Not currently triggered (only one file matches any given
-      instrument/site), but it is the same class of non-determinism fixed in Phase 0a —
-      [data_selection.py:155-171](agage_archive/data_selection.py#L155-L171)
+- [x] `choose_scale_defaults_file` broke ties using `data_file_list` order, which is
+      filesystem glob order. ✅ Fixed 2026-07-30. Ties now use a stable filename sort.
 - [ ] `site_code` casing differs between readers: `read_nc` upper-cases
       ([io.py:261](agage_archive/io.py#L261)), `read_ale_gage`
       ([io.py:634](agage_archive/io.py#L634)) and `read_gcwerks_flask`

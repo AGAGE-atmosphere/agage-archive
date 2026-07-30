@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ZIP output writes now replace an existing member instead of creating duplicate members.
 - Data-exclusion processing now only skips the actual `time` coordinate, not variables whose names merely contain `time`.
 - Instrument partial matching now prefers the longest matching instrument name.
+- Scale-default file selection now breaks equal-specificity ties by filename rather than filesystem order.
 
 ### Changed
 
