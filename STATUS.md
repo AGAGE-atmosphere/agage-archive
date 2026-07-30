@@ -215,8 +215,7 @@ silently mis-align published data.
       import time and could raise on import; [line 52](agage_archive/io_other_formats.py#L52)
       used `delim_whitespace=True`, removed in pandas 3.0. Path resolution is now lazy and
       whitespace parsing uses `sep=r"\s+"`; covered by import and parser tests.
-- [ ] **B12 — `start_date` is too early in individual-instrument files.** *Agreed to fix
-      (2026-07-29), scheduled after the current PR.*
+- [x] **B12 — `start_date` is too early in individual-instrument files.** ✅ Fixed 2026-07-30.
 
       All four readers call `format_attributes` before removing NaN mole fractions
       ([io.py:269](agage_archive/io.py#L269), [643](agage_archive/io.py#L643),
@@ -245,12 +244,10 @@ silently mis-align published data.
       contributing datasets were each read with `dropna=True`. With `dropna=False` they
       would be wrong too.
 
-      **Preferred fix:** compute `start_date` and `end_date` in `output_dataset`, at write
-      time, where the dataset is definitely final — rather than patching each reader.
-      That removes the whole class of "derived attribute computed too early" rather than
-      this one instance, and subsumes the existing `end_date` special case. Changes an
-      attribute on ~618 files in the real archive. Do it alongside Phase 1b/A3, which is
-      the same underlying problem.
+      **Fix:** compute `start_date` and `end_date` in `output_dataset`, at write time, where
+      the dataset is definitely final. This removes the whole class of "derived attribute
+      computed too early" rather than this one instance, and subsumes the existing
+      `end_date` special case. Changes an attribute on ~618 files in the real archive.
 
 - [ ] **B13 — Magnum inlet attributes have inconsistent types** (#171). Magnum files
       expose `inlet_base_elevation_masl`, `inlet_latitude`, and `inlet_longitude` as
@@ -444,7 +441,8 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | Combined-file global attributes now come from the most recently operating instrument (#167). Follow-on attribute work tracked as Phase 1b together with #169. |
 | 2026-07-29 | Version bumped to 0.3.0. This branch changes published output, and `processing_code_version` is written into every file, so archives built from it must not claim to be 0.2.1. |
 | 2026-07-29 | B2 fixed after targeted tests showed the check was not merely weak but completely dead. Enabling it changes no output; it only means a genuine data/baseline mismatch now fails instead of being published. |
-| 2026-07-29 | B12 (`start_date` too early in individual-instrument files) will be fixed, but not in the current PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
+| 2026-07-29 | B12 (`start_date` too early in individual-instrument files) was approved for a later PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
+| 2026-07-30 | B12 fix approved for landing: recompute `start_date` and `end_date` in `output_dataset` after final filtering. This intentionally changes published attributes on affected files; regenerate the golden manifest after review. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
 ### Open questions

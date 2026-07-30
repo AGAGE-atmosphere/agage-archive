@@ -229,6 +229,29 @@ def test_read_nc_sorts_non_monotonic_timestamps():
     assert pd.Index(ds.time.values).is_monotonic_increasing
 
 
+def test_output_dataset_recomputes_start_date(monkeypatch):
+    ds = xr.Dataset(
+        {"mf": ("time", [1.0, 2.0])},
+        coords={"time": pd.date_range("2020-01-01", periods=2, freq="D")},
+        attrs={
+            "network": "agage_test",
+            "species": "ch4",
+            "site_code": "THD",
+            "version": "testv1",
+            "start_date": "1900-01-01 00:00:00",
+            "end_date": "1900-01-02 00:00:00",
+        },
+    )
+    written = {}
+    monkeypatch.setattr(
+        "agage_archive.io.output_write",
+        lambda dataset, *args, **kwargs: written.setdefault("dataset", dataset),
+    )
+    output_dataset(ds, "agage_test", output_subpath="ch4", verbose=False)
+
+    assert written["dataset"].attrs["start_date"] == "2020-01-01 00:00:00"
+
+
 def test_picarro():
     """Test that Picarro file is read correctly, resampled to hourly and that the timestamp is at the beginning of the sampling period
     """
