@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-31 (T6 archive_to_csv covered; fixed directory-entry crash)
+**Last updated:** 2026-07-31 (T7 input-file checker added; run_all check_inputs hook)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -401,10 +401,17 @@ P4 (drop_duplicates) compound on top.
       `archive_to_csv` fed to `read_text` — fixed by skipping them (see CHANGELOG). Zip
       archives (the usual release format) had no such entries, which is why 0% coverage let
       it hide.
-- [ ] **T7 — Input configuration consistency checks** (#97). Validate that species names
-      agree across release schedules, scale-default files and `standard_names.json`; check
-      that configured dates parse successfully and that end dates are not before start
-      dates. Cover failures with messages that identify the offending file and value.
+- [x] **T7 — Input configuration consistency checks** (#97). ✅ Done 2026-07-31. #97 asked
+      for a pre-flight *utility*, not just a test, so this is a new module
+      `agage_archive/checks.py` with `check_input_files(network)`: species used in the
+      release schedules and `data_combination` files must be defined in the network's
+      `scale_defaults.csv` or `standard_names.json`; every date must parse; no end date may
+      precede its start. It reports every problem at once, each naming the file and value.
+      The underlying `check_*` helpers are pure (take parsed dataframes), so failure cases
+      are unit-tested directly; an integration test asserts the real `agage_test` config is
+      clean. `run_all` gains an opt-in `check_inputs=False` keyword that runs it first and
+      aborts before touching the archive. Left opt-in rather than default-on because the
+      real-network configs can't be validated here. Covered in `tests/test_checks.py`.
 
 ---
 
