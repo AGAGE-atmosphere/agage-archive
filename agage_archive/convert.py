@@ -133,6 +133,12 @@ def define_agg_dict(variable_defaults, resample_period, columns,
     for var in columns:
         if var =="time":
             continue
+        # Skip auxiliary source variables (e.g. run_time) that are not in the output
+        # schema: they have no resample_method and format_variables drops them anyway.
+        # Resample runs before format_variables in read_nc, so they may still be present;
+        # leaving them out of the aggregation dict drops them from the resampled result.
+        if var not in variable_defaults:
+            continue
         if variable_defaults[var]["resample_method"] == "mean":
             agg_dict[var] = "mean"
         elif variable_defaults[var]["resample_method"] == "median":
