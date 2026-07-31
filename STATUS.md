@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-31 (P6 raw ALE/GAGE read cached; P5 WONTFIX; P7 logged)
+**Last updated:** 2026-07-31 (T6 archive_to_csv covered; fixed directory-entry crash)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -393,8 +393,14 @@ P4 (drop_duplicates) compound on top.
       duplicate-timestamp cases for `drop_duplicates` landed with P4 (non-NaN preference,
       instrument priority, the all-NaN branch, and multi-timestamp/extra-variable
       preservation).
-- [ ] **T6 — `util.archive_to_csv` end-to-end.** 0% covered and it produces a published
-      archive.
+- [x] **T6 — `util.archive_to_csv` end-to-end.** ✅ Done 2026-07-31. `tests/test_util.py`
+      builds a small real archive (one GCMS-Medusa species/site, no combined/baseline, so
+      no slow ALE/GAGE reads), runs `archive_to_csv`, and checks each `.nc` gains a `.csv`
+      counterpart and non-nc files are copied verbatim. Writing it exposed a crash: on a
+      directory archive `data_file_list` yields trailing-slash subdirectory entries, which
+      `archive_to_csv` fed to `read_text` — fixed by skipping them (see CHANGELOG). Zip
+      archives (the usual release format) had no such entries, which is why 0% coverage let
+      it hide.
 - [ ] **T7 — Input configuration consistency checks** (#97). Validate that species names
       agree across release schedules, scale-default files and `standard_names.json`; check
       that configured dates parse successfully and that end dates are not before start
