@@ -543,6 +543,89 @@ def test_drop_duplicates():
     assert ds.instrument_type.values[12] == 2
 
 
+def _duplicate_dataset(times, mf, instrument_type):
+    """Minimal dataset for exercising drop_duplicates directly.
+
+    Args:
+        times (list): Timestamps (may repeat).
+        mf (list): Mole fractions (NaN allowed).
+        instrument_type (list): Instrument-type codes; priority is order of first appearance.
+
+    Returns:
+        xr.Dataset: Dataset with time, mf and instrument_type.
+    """
+
+    return xr.Dataset(
+        data_vars={
+            "mf": ("time", np.array(mf, dtype=float)),
+            "instrument_type": ("time", np.array(instrument_type, dtype=np.int8)),
+        },
+        coords={"time": pd.to_datetime(list(times))},
+    )
+
+
+def test_drop_duplicates_prefers_non_nan():
+    """A NaN and a real value at the same time: the real value survives."""
+
+    ds = drop_duplicates(_duplicate_dataset(["2000-01-01", "2000-01-01"],
+                                            mf=[np.nan, 5.0], instrument_type=[0, 1]))
+
+    assert len(ds.time) == 1
+    assert ds.mf.values[0] == 5.0
+    assert ds.instrument_type.values[0] == 1
+
+
+def test_drop_duplicates_instrument_priority_by_first_appearance():
+    """Two real values at the same time: keep the instrument that appeared first.
+
+    instrument_type 1 appears before 0 in the record, so 1 wins and the value from 0
+    (4.0) is dropped.
+    """
+
+    ds = drop_duplicates(_duplicate_dataset(["2000-01-01", "2000-01-01"],
+                                            mf=[3.0, 4.0], instrument_type=[1, 0]))
+
+    assert len(ds.time) == 1
+    assert ds.mf.values[0] == 3.0
+    assert ds.instrument_type.values[0] == 1
+
+
+def test_drop_duplicates_all_nan_keeps_first():
+    """All values at a timestamp are NaN: keep the earliest, drop the rest.
+
+    This is the branch at io.py:96 (the whole group is NaN), which no other test reaches.
+    Instrument priority does not apply — the first occurrence in index order is kept, so
+    the lower-priority instrument 1 (which appears first) survives over 0.
+    """
+
+    ds = drop_duplicates(_duplicate_dataset(["2000-01-01", "2000-01-01"],
+                                            mf=[np.nan, np.nan], instrument_type=[1, 0]))
+
+    assert len(ds.time) == 1
+    assert ds.instrument_type.values[0] == 1
+    assert np.isnan(ds.mf.values[0])
+
+
+def test_drop_duplicates_preserves_other_timestamps_and_vars():
+    """Non-duplicated rows and extra data variables must survive unchanged.
+
+    The kept row's mf_repeatability must come from that same row, not a dropped one.
+    """
+
+    ds = _duplicate_dataset(["2000-01-01", "2000-01-02", "2000-01-01"],
+                            mf=[np.nan, 1.0, 2.0], instrument_type=[0, 0, 1])
+    ds["mf_repeatability"] = ("time", np.array([9.0, 8.0, 7.0]))
+
+    ds = drop_duplicates(ds)
+
+    assert len(ds.time) == 2
+    kept = ds.sel(time="2000-01-01")
+    assert kept.mf.values == 2.0
+    assert kept.instrument_type.values == 1
+    assert kept.mf_repeatability.values == 7.0
+    assert ds.sel(time="2000-01-02").mf.values == 1.0
+
+
 def test_read_gcms_magnum_file():
 
     species = "HFC-134a"

@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (P1–P3 caching done)
+**Last updated:** 2026-07-31 (P4 drop_duplicates vectorised; T5 done)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -320,11 +320,16 @@ best-value work in the plan.
 **Result (P1–P3 together):** `combine_datasets('agage_test','ch3ccl3','CGO')` **2.26 s → 1.90 s
 (16% faster)** on repeated calls, same machine. Golden manifest (directory + zip) byte-identical
 under `PYTHONHASHSEED` 0 and 12345. PR bundles the three as separate commits.
-- [ ] **P4 — Vectorise `drop_duplicates`.** [io.py:87-113](agage_archive/io.py#L87-L113)
-      does an O(n) `ds.sel(time=timestamp)` inside a loop over duplicated timestamps.
-      Replace with a pandas groupby on `(time, instrument_type)` priority. Cover the
-      all-NaN branch ([io.py:96](agage_archive/io.py#L96)) with a test *first* — it is
-      currently unexecuted.
+- [x] **P4 — Vectorise `drop_duplicates`.** ✅ Done 2026-07-31. The old loop did an O(n)
+      `ds.sel(time=timestamp)` per duplicated timestamp — O(n²) overall. Replaced with a
+      single priority sort (`time`, then real-over-NaN, then instrument priority, then
+      position) plus `drop_duplicates("time", keep="first")`, then `isel` of the kept
+      positions. Behaviour is identical, including the subtlety that an all-NaN group keeps
+      its *first* row regardless of instrument (the priority key is zeroed for NaN rows).
+      Five direct tests added first — pinned against the old code, then re-run against the
+      new — including the all-NaN branch (was unexecuted, covers T5's duplicate case) and a
+      check that extra data variables ride along. Micro-benchmark (6000 rows, 3000 dropped):
+      **2185 ms → 5.6 ms (~390×)**; golden manifest (directory + zip) byte-identical.
 - [ ] **P5 — Stop calling `format_variables` two or three times per dataset.** It rebuilds
       the whole Dataset and re-reads three JSON files each time (`read_nc`, then
       `combine_datasets`).
@@ -372,9 +377,11 @@ modulo the three volatile attributes.
       `optional` ∈ {`"True"`, `"False"`}, `remove_flagged` ∈ {`"True"`, `"False"`, `"Zero"`},
       an `encoding.dtype` present in `nc4_types`, and a `resample_method` handled by
       `define_agg_dict` where applicable. Catches B8 and future typos.
-- [ ] **T5 — Non-monotonic and duplicate-timestamp input fixtures.** The in-memory
-      non-monotonic `read_nc` case (B1) is covered; the duplicate-timestamp case for
-      `drop_duplicates` (P4) remains outstanding.
+- [x] **T5 — Non-monotonic and duplicate-timestamp input fixtures.** ✅ Done 2026-07-31.
+      The in-memory non-monotonic `read_nc` case (B1) was already covered; the
+      duplicate-timestamp cases for `drop_duplicates` landed with P4 (non-NaN preference,
+      instrument priority, the all-NaN branch, and multi-timestamp/extra-variable
+      preservation).
 - [ ] **T6 — `util.archive_to_csv` end-to-end.** 0% covered and it produces a published
       archive.
 - [ ] **T7 — Input configuration consistency checks** (#97). Validate that species names
