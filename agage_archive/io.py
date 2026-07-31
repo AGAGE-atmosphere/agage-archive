@@ -1203,6 +1203,7 @@ def combine_datasets(network, species, site,
 
     dss = []
     comments = []
+    comment_dates = []
     instrument_rec = []
     networks = []
     scales = []
@@ -1211,6 +1212,7 @@ def combine_datasets(network, species, site,
 
     for instrument, ds in datasets.items():
         comments.append(ds.attrs["comment"])
+        comment_dates.append(ds.attrs.get("instrument_date", ""))
         networks.append(ds.attrs["network"])
         data_owners.append(ds.attrs.get("data_owner", ""))
         data_owner_emails.append(ds.attrs.get("data_owner_email", ""))
@@ -1257,8 +1259,9 @@ def combine_datasets(network, species, site,
     ds_combined = format_attributes(ds_combined, instrument_rec,
                                     extra_attributes={"instrument_selection": instrument_selection_text})
 
-    # Extend comment attribute describing all datasets
-    ds_combined.attrs["comment"] = combine_comments(comments)
+    # Extend comment attribute describing all datasets, ordered most-recent first to
+    # match the numbered instrument_* attributes.
+    ds_combined.attrs["comment"] = combine_comments(comments, comment_dates)
 
     # Format variables
     ds_combined = format_variables(ds_combined)
@@ -1310,21 +1313,32 @@ def most_recent_dataset(datasets):
     return max(datasets, key=lambda ds: ds.time.values[-1])
 
 
-def combine_comments(comments):
+def combine_comments(comments, dates=None):
     """Build a combined-file comment listing each contributing instrument's comment.
 
     Identical instrument comments are de-duplicated so that instruments sharing a
-    comment (e.g. the same source note) are not listed twice (issue #175). Order is
-    preserved from first appearance, i.e. data_combination order.
+    comment (e.g. the same source note) are not listed twice (issue #175).
+
+    If instrument dates are supplied, the comments are ordered most-recent first, so
+    they run in the same direction as the numbered instrument_* attributes (which
+    format_attributes_global_instruments sorts by date descending). Otherwise order is
+    preserved from first appearance. The same ``np.argsort`` used for the instrument
+    numbering is reused here so the two orderings agree.
 
     Args:
         comments (list[str]): Each contributing instrument's comment attribute.
+        dates (list[str], optional): Each instrument's date, aligned with ``comments``.
+            When given, comments are ordered by date descending before de-duplication.
 
     Returns:
         str: A single comment string. If more than one distinct comment is present,
             they are enumerated under a header; otherwise the sole comment is returned
             unchanged.
     """
+
+    if dates is not None:
+        order = np.argsort(dates)[::-1]
+        comments = [comments[i] for i in order]
 
     unique_comments = []
     for comment in comments:

@@ -135,6 +135,22 @@ def test_combine_datasets():
     # Test that the instrument_type attribute has been added
     assert ds.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
 
+    # Numbered instrument attributes are prefixed with their instrument type so a reader
+    # can tell which type each identifier belongs to (#148). Self-describing identifiers
+    # (GCMD, GAGE_GCMD, ALE_GCMD) already begin with their type and are left unchanged.
+    assert ds.attrs["instrument"] == "GCMS-Medusa - agilent_5975"
+    assert ds.attrs["instrument_1"] == "GCMS-Medusa - agilent_5973"
+    assert ds.attrs["instrument_2"] == "GCMD"
+    assert ds.attrs["instrument_3"] == "GAGE_GCMD"
+    assert ds.attrs["instrument_4"] == "ALE_GCMD"
+
+    # The combined comment lists sources most-recent first, so it runs in the same
+    # direction as the numbered instrument_* attributes (Medusa, GCMD, GAGE, ALE).
+    comment = ds.attrs["comment"]
+    assert comment.index("GCMS-Medusa measurements") < comment.index("GCMD measurements")
+    assert comment.index("GCMD measurements") < comment.index("GAGE ch3ccl3 data")
+    assert comment.index("GAGE ch3ccl3 data") < comment.index("ALE ch3ccl3 data")
+
     # data_owner is the de-duplicated union of the contributing instruments (#169).
     # Every instrument at CGO shares this owner, so the union is a single name here;
     # the union behaviour itself is covered directly in test_combine_data_owners.
@@ -186,6 +202,11 @@ def test_combine_comments():
     assert combine_comments(["same", "same"]) == "same"
     assert combine_comments(["a", "same", "same", "b"]) == \
         "Combined dataset from the following individual sources:\n0) a\n1) same\n2) b\n"
+
+    # When instrument dates are supplied, comments are ordered most-recent first, to
+    # match the numbered instrument_* attributes
+    assert combine_comments(["old", "new"], ["2000-01-01", "2020-01-01"]) == \
+        "Combined dataset from the following individual sources:\n0) new\n1) old\n"
 
 
 def test_read_nc_path():

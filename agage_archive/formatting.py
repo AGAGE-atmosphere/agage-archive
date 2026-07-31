@@ -10,6 +10,30 @@ from agage_archive.util import is_number, lookup_username
 from agage_archive.definitions import instrument_type_definition, nc4_types
 
 
+def prefix_instrument_type(instrument, instrument_type):
+    '''Prefix an instrument identifier with its instrument type.
+
+    In a combined file the numbered instrument attributes list identifiers from
+    several instrument types (e.g. "agilent_5975", "GCMD"). Prefixing the type makes
+    it clear which type each identifier belongs to (issue #148). The prefix is skipped
+    when the identifier already begins with its type, so self-describing identifiers
+    such as "GCMD" or "GAGE_GCMD" are left unchanged rather than becoming "GCMD - GCMD".
+
+    Args:
+        instrument (str): Instrument identifier.
+        instrument_type (str): Instrument type (e.g. "GCMS-Medusa").
+
+    Returns:
+        str: The identifier, prefixed with "{type} - " where that adds information.
+    '''
+
+    if not instrument_type:
+        return instrument
+    if instrument.lower().startswith(instrument_type.lower()):
+        return instrument
+    return f"{instrument_type} - {instrument}"
+
+
 def format_attributes_global_instrument(ds,
                                 instrument,
                                 return_attributes=False):
@@ -125,7 +149,14 @@ def format_attributes_global_instruments(ds,
 
             for attr in ["instrument", "instrument_date", "instrument_comment"]:
                 if attr + n in instrument.keys():
-                    attrs[attr + suffix_new] = instrument[attr + n]
+                    value = instrument[attr + n]
+                    if attr == "instrument":
+                        # Prefix the instrument identifier with its type so that, in a
+                        # combined file listing several instruments, a reader can tell
+                        # that e.g. "agilent_5975" is a GCMS-Medusa (issue #148).
+                        value = prefix_instrument_type(value,
+                                                       instrument.get("instrument_type", ""))
+                    attrs[attr + suffix_new] = value
                 else:
                     print("WARNING: No " + attr + " found for instrument " + n + ". Setting to empty string")
                     attrs[attr + suffix_new] = ""
