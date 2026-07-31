@@ -159,8 +159,8 @@ def test_run_all_check_inputs_aborts_before_processing(monkeypatch):
     deleter.assert_not_called()
 
 
-def test_run_all_skips_checker_by_default(monkeypatch):
-    """check_inputs defaults to False: the checker must not run."""
+def test_run_all_runs_checker_by_default(monkeypatch):
+    """check_inputs defaults to True: the checker runs before processing."""
 
     checker = Mock()
     monkeypatch.setattr(run_module, "check_input_files", checker)
@@ -170,6 +170,20 @@ def test_run_all_skips_checker_by_default(monkeypatch):
 
     with pytest.raises(RuntimeError, match="reached processing"):
         run_all("agage_test")
+
+    checker.assert_called_once()
+
+
+def test_run_all_check_inputs_false_skips_checker(monkeypatch):
+    """check_inputs=False opts out of the checker."""
+
+    checker = Mock()
+    monkeypatch.setattr(run_module, "check_input_files", checker)
+    monkeypatch.setattr(run_module, "delete_archive",
+                        Mock(side_effect=RuntimeError("reached processing")))
+
+    with pytest.raises(RuntimeError, match="reached processing"):
+        run_all("agage_test", check_inputs=False)
 
     checker.assert_not_called()
 

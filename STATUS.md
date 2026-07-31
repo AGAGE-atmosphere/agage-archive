@@ -409,9 +409,9 @@ P4 (drop_duplicates) compound on top.
       precede its start. It reports every problem at once, each naming the file and value.
       The underlying `check_*` helpers are pure (take parsed dataframes), so failure cases
       are unit-tested directly; an integration test asserts the real `agage_test` config is
-      clean. `run_all` gains an opt-in `check_inputs=False` keyword that runs it first and
-      aborts before touching the archive. Left opt-in rather than default-on because the
-      real-network configs can't be validated here. Covered in `tests/test_checks.py`.
+      clean. `run_all` runs it by default (`check_inputs=True`) before touching the
+      archive and aborts if any problem is found; pass `check_inputs=False` to skip.
+      Covered in `tests/test_checks.py`.
 
 ---
 

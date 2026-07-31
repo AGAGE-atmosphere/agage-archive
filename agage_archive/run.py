@@ -510,7 +510,7 @@ def run_all(network,
             resample=True,
             top_level_only=False,
             flask_pair_agreement=False,
-            check_inputs=False):
+            check_inputs=True):
     """Process data files for multiple instruments. Reads the release schedule to determine which
     instruments to process
 
@@ -530,7 +530,7 @@ def run_all(network,
             Default to False.
         check_inputs (bool, optional): Run the input-file consistency checks
             (`checks.check_input_files`) before processing, and abort with a single error
-            listing every problem if any are found. Default to False.
+            listing every problem if any are found. Default to True.
     """
 
     if not network:
