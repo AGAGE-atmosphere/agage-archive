@@ -5,7 +5,7 @@ from datetime import datetime
 import warnings
 
 from agage_archive import __version__ as code_version
-from agage_archive.config import open_data_file, data_file_path
+from agage_archive.config import open_data_file, data_file_path, load_json
 from agage_archive.util import is_number, lookup_username
 from agage_archive.definitions import instrument_type_definition, nc4_types
 
@@ -205,11 +205,9 @@ def format_variables(ds,
 
     network = ds.attrs["network"]
 
-    with open_data_file("variables.json", this_repo=True) as f:
-        variables = json.load(f)
-    
-    with open_data_file("standard_names.json", this_repo=True) as f:
-        standard_names=json.load(f)
+    variables = load_json("variables.json", this_repo=True)
+
+    standard_names = load_json("standard_names.json", this_repo=True)
 
     # Some attributes that we want to keep without changing
     attrs = ds.attrs.copy()
@@ -349,8 +347,7 @@ def format_attributes(ds, instruments = [],
         xr.Dataset: Dataset with formatted attributes
     '''
 
-    with open_data_file("attributes.json", this_repo=True) as f:
-        attributes_default = json.load(f)
+    attributes_default = load_json("attributes.json", this_repo=True)
 
     if network is None:
         if "network" in ds.attrs:
@@ -361,8 +358,7 @@ def format_attributes(ds, instruments = [],
         ds.attrs["network"] = network
         network_attrs = network
 
-    with open_data_file("attributes.json", network=network_attrs) as f:
-        attributes_network = json.load(f)
+    attributes_network = load_json("attributes.json", network=network_attrs)
 
     # Combine default and network attributes
     # Allow default attributes to be overwritten by network attributes

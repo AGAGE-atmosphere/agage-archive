@@ -4,7 +4,7 @@ import xarray as xr
 import json
 from openghg_calscales import convert as convert_scale
 
-from agage_archive.config import open_data_file
+from agage_archive.config import open_data_file, load_json
 from agage_archive.data_selection import calibration_scale_default
 from agage_archive.formatting import format_species, format_variables, comment_append
 
@@ -403,12 +403,10 @@ def resample(ds,
     """
 
     # Read variables.json
-    with open_data_file("variables.json", this_repo=True) as f:
-        variable_defaults = json.load(f)
+    variable_defaults = load_json("variables.json", this_repo=True)
 
     # Read variable defaults for non-public data to find how to resample these variables
-    with open_data_file("variables_not_public.json", this_repo=True) as f:
-        variable_np_defaults = json.load(f)
+    variable_np_defaults = load_json("variables_not_public.json", this_repo=True)
     variable_defaults.update(variable_np_defaults)
     
     # check if median time difference is less than minimum_averaging_period

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 
-from agage_archive.config import open_data_file, data_file_list
+from agage_archive.config import open_data_file, data_file_list, load_json
 from agage_archive.formatting import format_species
 
 
@@ -282,12 +282,10 @@ def read_data_exclude(ds, species, site, instrument,
         data_exclude = pd.read_csv(f, comment="#")
 
     # Read variable defaults to find what to do with missing data
-    with open_data_file("variables.json", this_repo=True) as f:
-        variable_defaults = json.load(f)
+    variable_defaults = load_json("variables.json", this_repo=True)
 
     # Read variable defaults for non-public data to find what to do with missing data
-    with open_data_file("variables_not_public.json", this_repo=True) as f:
-        variable_np_defaults = json.load(f)
+    variable_np_defaults = load_json("variables_not_public.json", this_repo=True)
     variable_defaults.update(variable_np_defaults)
 
     # Remove whitespace from strings

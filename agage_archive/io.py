@@ -6,7 +6,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import json
 
 from agage_archive.config import Paths, open_data_file, data_file_list, \
-    output_path
+    output_path, load_json
 from agage_archive.convert import scale_convert
 from agage_archive.convert import resample as resample_function
 from agage_archive.formatting import format_species, \
@@ -352,8 +352,7 @@ def read_baseline(network, species, site, instrument,
         xarray.Dataset: Contents of netCDF file
     """
 
-    with open_data_file("attributes.json", network=network) as f:
-        attributes_default = json.load(f)
+    attributes_default = load_json("attributes.json", network=network)
 
     read_function = get_data_read_function(network, instrument)
 
@@ -544,8 +543,7 @@ def read_ale_gage(network, species, site, instrument,
     paths = Paths(network)
 
     # Get data on ALE/GAGE sites
-    with open_data_file("ale_gage_sites.json", network = network, verbose=verbose) as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network=network)
 
     # Get species info
     with open_data_file("ale_gage_species.json", network = network, verbose=verbose) as f:
@@ -845,8 +843,7 @@ def read_gcms_magnum(network, species,
     """
 
     # Get data on ALE/GAGE sites
-    with open_data_file("ale_gage_sites.json", network = network, verbose=verbose) as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network=network)
 
     # Get species info
     with open_data_file("gcms-magnum_species.json", network = network, verbose=verbose) as f:

@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-30 (Phase 0 closed — golden test now covers zip output)
+**Last updated:** 2026-07-30 (P1–P3 caching done)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -301,16 +301,25 @@ silently mis-align published data.
 All of this is provably output-preserving once Phase 0 is in place, which makes it the
 best-value work in the plan.
 
-- [ ] **P1 — Cache config and JSON loads.** `Paths()` walks the tree looking for `.git` and
-      re-parses `config.yaml` on every construction: 373 constructions and 343 YAML parses
-      per `combine_datasets` call, 1.28 s of 5.27 s. Caching *only* the config YAML parse,
-      changing nothing else, measured **2.45 s → 1.87 s (24% faster)** with identical
-      output. Extend to `variables.json`, `attributes.json`, `standard_names.json`,
-      `variables_not_public.json`.
-- [ ] **P2 — Cache `define_instrument_number`.** Re-lists a directory on every call, and is
-      called per-dataset and per-variable via `instrument_type_definition`.
-- [ ] **P3 — Cache `ale_gage_sites.json`.** Read 243 times in a single `combine_datasets`
-      call, once per monthly ALE/GAGE file via `tz_local_to_utc`.
+- [x] **P1 — Cache config and JSON loads.** ✅ Done 2026-07-30. `config.py` now caches the
+      `.git` walk, the `*_archive` package glob and the `config.yaml` parse (keyed on
+      path+mtime), and adds `config.load_json` — a parse memoised by path+mtime that returns
+      a fresh deep copy per call. Copy-on-return is required: `format_attributes` overlays
+      network/site attributes onto `attributes.json` and `read_data_exclude` does
+      `variable_defaults.update(...)` on `variables.json`, so a shared instance would poison
+      the cache. Applied to `variables.json`, `attributes.json`, `standard_names.json`,
+      `variables_not_public.json`. Per cold `combine_datasets` call: config parses **322 → 1**,
+      package glob **357 → 1**, JSON parses **283 → 6**.
+- [x] **P2 — Cache `define_instrument_number`.** ✅ Done 2026-07-30. Memoised on network,
+      returns a fresh dict per call; **22 → 1** directory listings per cold call.
+- [x] **P3 — Cache `ale_gage_sites.json`.** ✅ Done 2026-07-30. The three hot-path reads
+      (`read_ale_gage`, `read_gcms_magnum`, and `tz_local_to_utc`, the last called once per
+      monthly ALE/GAGE file) now go through `load_json`. `io_other_formats.py` reads the
+      same file directly but is off the hot path (0% coverage) and was left untouched.
+
+**Result (P1–P3 together):** `combine_datasets('agage_test','ch3ccl3','CGO')` **2.26 s → 1.90 s
+(16% faster)** on repeated calls, same machine. Golden manifest (directory + zip) byte-identical
+under `PYTHONHASHSEED` 0 and 12345. PR bundles the three as separate commits.
 - [ ] **P4 — Vectorise `drop_duplicates`.** [io.py:87-113](agage_archive/io.py#L87-L113)
       does an O(n) `ds.sel(time=timestamp)` inside a loop over duplicated timestamps.
       Replace with a pandas groupby on `(time, instrument_type)` priority. Cover the

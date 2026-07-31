@@ -1,14 +1,64 @@
 from pathlib import Path as _Path
+import json
 import tarfile
 from zipfile import ZipFile, ZIP_DEFLATED
 import yaml
+from copy import deepcopy
 from fnmatch import fnmatch
+from functools import lru_cache
 import psutil
 from shutil import copy, rmtree
 import os
 
 
 ERROR_MODES = {"raise", "ignore", "ignore_inputs", "ignore_outputs"}
+
+
+@lru_cache(maxsize=None)
+def _find_working_directory(cwd):
+    """Walk up from cwd to the repository root (the directory holding .git).
+
+    Cached: the repository root does not move within a run, and this walk otherwise runs
+    on every Paths() construction — hundreds of times per combined dataset.
+    """
+
+    working_directory = cwd
+    while True:
+        if (working_directory / ".git").exists():
+            return working_directory
+        working_directory = working_directory.parent
+        if working_directory == _Path("/"):
+            raise FileNotFoundError("Can't find repository root")
+
+
+@lru_cache(maxsize=None)
+def _find_package_root(working_directory):
+    """Find the ``*_archive`` package folder under working_directory. Cached (see above)."""
+
+    for pth in working_directory.glob("*_archive"):
+        if (pth / "__init__.py").exists():
+            return pth
+    raise FileNotFoundError("Can't find package folder. Make sure your package has "
+                            "'_archive' in the folder name and __init__.py")
+
+
+@lru_cache(maxsize=None)
+def _read_config_cached(config_file, mtime):
+    """Parse config.yaml, memoised by path and mtime. Do not mutate the result."""
+
+    with open(config_file) as f:
+        return yaml.safe_load(f)
+
+
+def _read_config(config_file):
+    """Return the parsed config.yaml, cached by path+mtime, as a fresh copy per call.
+
+    The mtime in the cache key means an edited config is re-read rather than served
+    stale. A copy per call because the cached instance is shared across the whole
+    session and callers (and tests) may adjust the config in place.
+    """
+
+    return deepcopy(_read_config_cached(str(config_file), config_file.stat().st_mtime))
 
 
 class Paths():
@@ -44,25 +94,13 @@ class Paths():
         # Do this by finding the location of the .git folder in the working directory
         # and then going up one level
         if not this_repo:
-            working_directory = _Path.cwd()
-            while True:
-                if (working_directory / ".git").exists():
-                    break
-                else:
-                    working_directory = working_directory.parent
-                    if working_directory == _Path("/"):
-                        raise FileNotFoundError("Can't find repository root")
+            working_directory = _find_working_directory(_Path.cwd())
         else:
             working_directory = _Path(__file__).parent.parent
 
-        # Within working directory find package folder 
+        # Within working directory find package folder
         # by looking for folder name with "_archive" in it, and __init__.py
-        for pth in working_directory.glob("*_archive"):
-            if (pth / "__init__.py").exists():
-                self.root = pth
-                break
-        else:
-            raise FileNotFoundError("Can't find package folder. Make sure your package has '_archive' in the folder name and __init__.py")
+        self.root = _find_package_root(working_directory)
 
         self.data = self.root.parent / "data"
 
@@ -78,10 +116,9 @@ class Paths():
             raise FileNotFoundError(
                 "Config file not found. Try running config.setup first")
 
-        # Read config file
-        with open(self.config_file) as f:
-            config = yaml.safe_load(f)
-        
+        # Read config file (cached by path+mtime)
+        config = _read_config(self.config_file)
+
         self.user = config["user"]["name"]
 
         # If network is not set, exit
@@ -416,6 +453,40 @@ def open_data_file(filename,
         return tarfile.open(pth / filename, f"{mode}:gz")
     else:
         return (pth / filename).open(f"{mode}b")
+
+
+@lru_cache(maxsize=None)
+def _load_json_cached(path, mtime):
+    """Parse a JSON file, memoised by absolute path and mtime. Do not mutate the result."""
+
+    with open(path, "rb") as f:
+        return json.load(f)
+
+
+def load_json(filename, network="", sub_path="", this_repo=False):
+    """Load and parse a JSON data file, caching the parse.
+
+    The schema and lookup JSON files (variables.json, attributes.json, standard_names.json,
+    variables_not_public.json, ale_gage_sites.json, ...) are read hundreds of times per
+    archive run but change only between runs. The parse is memoised by resolved path and
+    mtime; each call returns a fresh deep copy, so callers keep the mutable-dict semantics
+    of ``json.load`` — several overlay onto the result in place (``format_attributes``
+    merges network/site attributes onto attributes.json; ``read_data_exclude`` does
+    ``variable_defaults.update(...)`` on variables.json).
+
+    Args:
+        filename (str): JSON filename.
+        network (str, optional): Network. Defaults to "".
+        sub_path (str, optional): Sub-path. Defaults to "".
+        this_repo (bool, optional): Resolve within this repository. Defaults to False.
+
+    Returns:
+        The parsed JSON, as a fresh copy on every call.
+    """
+
+    pth = data_file_path(filename, network=network, sub_path=sub_path,
+                         this_repo=this_repo, errors="raise")
+    return deepcopy(_load_json_cached(str(pth), pth.stat().st_mtime))
 
 
 def output_path(network,

@@ -119,20 +119,21 @@ def archive_manifest(root):
 def _patch_config_output(monkeypatch, output_path_value):
     """Redirect the agage_test output_path for the duration of a run.
 
-    Paths re-reads config.yaml (via yaml.safe_load) on every construction, so patching
-    the loader is the least invasive way to point the output somewhere else without
-    editing the user's config file. The guard leaves any non-config YAML untouched, so
-    only the network's output_path is affected.
+    Patches config.py's cached config reader rather than the user's config.yaml. Going
+    through _read_config (not yaml.safe_load) is deliberate: the config parse is memoised,
+    so patching the loader below the cache would be served a stale, unpatched result.
+    _read_config already hands back a fresh copy, so adjusting it here cannot poison the
+    cache, and the guard leaves any non-agage_test config untouched.
 
     Args:
         monkeypatch (pytest.MonkeyPatch): Patcher to register the override on.
         output_path_value (str): Value to substitute for the network's output_path.
     """
 
-    real_safe_load = agage_archive.config.yaml.safe_load
+    real_read_config = agage_archive.config._read_config
 
-    def patched(stream):
-        loaded = real_safe_load(stream)
+    def patched(config_file):
+        loaded = real_read_config(config_file)
         try:
             network_paths = loaded["paths"][NETWORK]
         except (TypeError, KeyError):
@@ -140,7 +141,7 @@ def _patch_config_output(monkeypatch, output_path_value):
         loaded["paths"][NETWORK] = {**network_paths, "output_path": output_path_value}
         return loaded
 
-    monkeypatch.setattr(agage_archive.config.yaml, "safe_load", patched)
+    monkeypatch.setattr(agage_archive.config, "_read_config", patched)
 
 
 @pytest.fixture(scope="module", params=["directory", "zip"])

@@ -2,10 +2,11 @@ import pandas as pd
 import xarray as xr
 import numpy as np
 import json
+from copy import deepcopy
 from io import BytesIO
 from unittest.mock import patch
 
-from agage_archive.config import Paths, open_data_file
+from agage_archive.config import Paths, open_data_file, load_json
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
     read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function, \
@@ -73,8 +74,7 @@ def test_read_ale_gage_site_code_uppercased():
     differently-cased site argument would silently produce a differently-cased
     site_code, which feeds directly into the output filename."""
 
-    with open_data_file("ale_gage_sites.json", network="agage_test") as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network="agage_test")
     site_info["cgo"] = site_info["CGO"]
 
     with open_data_file("ale_gage_timestamp_issues.json", network="agage_test") as f:
@@ -82,19 +82,25 @@ def test_read_ale_gage_site_code_uppercased():
     timestamp_issues["ALE"]["cgo"] = timestamp_issues["ALE"]["CGO"]
 
     real_open_data_file = open_data_file
+    real_load_json = load_json
+
+    def fake_load_json(filename, *args, **kwargs):
+        if filename == "ale_gage_sites.json":
+            return deepcopy(site_info)
+        return real_load_json(filename, *args, **kwargs)
 
     def fake_open_data_file(filename, *args, **kwargs):
-        if filename == "ale_gage_sites.json":
-            return BytesIO(json.dumps(site_info).encode())
         if filename == "ale_gage_timestamp_issues.json":
             return BytesIO(json.dumps(timestamp_issues).encode())
         return real_open_data_file(filename, *args, **kwargs)
 
     # read_release_schedule does its own case-sensitive site lookup, which is
     # out of scope here (tracked separately); skip it to isolate the site_code fix.
-    # tz_local_to_utc (in util.py) does its own ale_gage_sites.json lookup too.
-    with patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
-         patch("agage_archive.util.open_data_file", side_effect=fake_open_data_file), \
+    # ale_gage_sites.json is now loaded via the cached load_json, so it is injected there;
+    # tz_local_to_utc (in util.py) does its own load_json lookup too.
+    with patch("agage_archive.io.load_json", side_effect=fake_load_json), \
+         patch("agage_archive.util.load_json", side_effect=fake_load_json), \
+         patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
          patch("agage_archive.io.read_release_schedule", return_value=None):
         ds = read_ale_gage("agage_test", "ch3ccl3", "cgo", "ALE",
                            data_exclude=False, dropna=False)
@@ -617,20 +623,20 @@ def test_read_gcms_magnum_site_code_uppercased():
     argument (looked up here under a lowercase alias in ale_gage_sites.json)
     must still produce the canonical upper-case site_code."""
 
-    with open_data_file("ale_gage_sites.json", network="agage_test") as f:
-        site_info = json.load(f)
+    site_info = load_json("ale_gage_sites.json", network="agage_test")
     site_info["mhd"] = site_info["MHD"]
 
-    real_open_data_file = open_data_file
+    real_load_json = load_json
 
-    def fake_open_data_file(filename, *args, **kwargs):
+    def fake_load_json(filename, *args, **kwargs):
         if filename == "ale_gage_sites.json":
-            return BytesIO(json.dumps(site_info).encode())
-        return real_open_data_file(filename, *args, **kwargs)
+            return deepcopy(site_info)
+        return real_load_json(filename, *args, **kwargs)
 
     # read_release_schedule does its own case-sensitive site lookup, which is
     # out of scope here (tracked separately); skip it to isolate the site_code fix.
-    with patch("agage_archive.io.open_data_file", side_effect=fake_open_data_file), \
+    # ale_gage_sites.json is now loaded via the cached load_json, so it is injected there.
+    with patch("agage_archive.io.load_json", side_effect=fake_load_json), \
          patch("agage_archive.io.read_release_schedule", return_value=None):
         ds = read_gcms_magnum("agage_test", "hfc-134a", site="mhd",
                              data_exclude=False, dropna=True)
