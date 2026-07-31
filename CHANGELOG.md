@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scale-default file selection now breaks equal-specificity ties by filename rather than filesystem order.
 - `open_data_file` now keeps a ZIP archive open for the lifetime of the member handle it returns and closes it when that handle is closed, instead of closing the archive first and relying on CPython's `ZipExtFile` reference counting to keep the closed archive readable.
 - `read_ale_gage`, `read_gcms_magnum` and `read_gcwerks_flask` now upper-case `site_code` in output attributes, matching `read_nc` and `read_baseline`. Previously they stored the raw `site` argument, so a differently-cased site code would silently fail the case-sensitive `attributes_site.json` lookup in `format_attributes`, dropping station metadata with no error.
+- `archive_to_csv` no longer crashes on a directory-based archive. `data_file_list` yields subdirectory entries (with a trailing slash) for a directory archive; these were treated as non-netCDF files and passed to `read_text`, raising `FileNotFoundError`. They are now skipped. Zip archives were unaffected, as they contain no such entries.
 
 ### Changed
 

@@ -411,6 +411,10 @@ def archive_to_csv(network):
     print(f"Converting {len(files)} files to CSV format...")
 
     for f in tqdm(files):
+        # data_file_list yields subdirectory entries (with a trailing slash) for a
+        # directory-based archive; there is nothing to convert or copy for those.
+        if f.endswith("/"):
+            continue
         if not f.endswith(".nc"):
             # Copy the file as is
             archive_write_csv(csv_archive_path, f,

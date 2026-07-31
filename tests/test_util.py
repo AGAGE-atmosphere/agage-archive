@@ -4,9 +4,13 @@ from pathlib import Path
 from zipfile import ZipFile
 import tempfile
 import os
+import shutil
 from pathlib import Path
 
-from agage_archive.util import parse_fortran_format, nc_to_csv, archive_write_csv
+from agage_archive.config import data_file_path
+from agage_archive.run import run_all
+from agage_archive.util import parse_fortran_format, nc_to_csv, archive_write_csv, \
+    archive_to_csv
 
 
 def test_parse_fortran_format():
@@ -144,3 +148,50 @@ def test_archive_write_csv():
         with open(non_zip_path / filename_with_subpath, mode="r", encoding="utf-8-sig") as f:
             content = f.read()
             assert content == data, f"Content of {non_zip_path / filename_with_subpath} does not match expected data"
+
+
+def test_archive_to_csv_end_to_end(clean_output):
+    """archive_to_csv converts a populated nc archive into a parallel csv archive.
+
+    Exercises the whole orchestration end to end: every .nc file is converted to .csv
+    (via nc_to_csv/archive_write_csv) at the same relative path, and non-nc files
+    (README/CHANGELOG) are copied verbatim. Uses a deliberately small archive — one
+    GCMS-Medusa species at one site, no combined products or baselines — so it avoids the
+    slow ALE/GAGE reads and stays fast.
+    """
+
+    nc_root = clean_output
+    csv_root = nc_root.parent / "output-csv"
+
+    run_all("agage_test", delete=True, combined=False, baseline=False, monthly=False,
+            instrument_include=["GCMS-Medusa"], species=["nf3"], sites=["MHD"])
+
+    try:
+        archive_to_csv("agage_test")
+
+        nc_files = sorted(p.relative_to(nc_root).as_posix() for p in nc_root.rglob("*.nc"))
+        assert nc_files, "no nc files were produced to convert"
+
+        # Every .nc file has a .csv counterpart at the same relative path
+        for rel in nc_files:
+            csv_rel = rel[:-len(".nc")] + ".csv"
+            assert (csv_root / csv_rel).exists(), f"missing csv for {rel}"
+
+        # Non-nc archive files (README/CHANGELOG) are copied verbatim
+        for name in ("README.md", "CHANGELOG.md"):
+            if (nc_root / name).exists():
+                assert (csv_root / name).read_text(encoding="utf-8-sig") == \
+                    data_file_path(name, "agage_test").read_text(encoding="utf-8"), \
+                    f"{name} not copied verbatim to the csv archive"
+
+        # Spot-check one converted file: header markers plus data with split time columns
+        sample = sorted(csv_root.rglob("*.csv"))[0]
+        text = sample.read_text(encoding="utf-8-sig")
+        assert "converted from netCDF to CSV" in text
+        assert "# GLOBAL ATTRIBUTES:" in text
+        _, _, data = text.partition("# DATA:\n")
+        data_columns = data.splitlines()[0].split(",")
+        for col in ("year", "month", "day", "hour", "minute", "second", "mf"):
+            assert col in data_columns, f"{col} column missing from csv data"
+    finally:
+        shutil.rmtree(csv_root, ignore_errors=True)
