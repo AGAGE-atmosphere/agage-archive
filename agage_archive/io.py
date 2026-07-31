@@ -1202,13 +1202,19 @@ def combine_datasets(network, species, site,
 
     dss = []
     comments = []
+    comment_dates = []
     instrument_rec = []
     networks = []
     scales = []
+    data_owners = []
+    data_owner_emails = []
 
     for instrument, ds in datasets.items():
         comments.append(ds.attrs["comment"])
+        comment_dates.append(ds.attrs.get("instrument_date", ""))
         networks.append(ds.attrs["network"])
+        data_owners.append(ds.attrs.get("data_owner", ""))
+        data_owner_emails.append(ds.attrs.get("data_owner_email", ""))
         instrument_rec.append({key:value for key, value in ds.attrs.items() if "instrument" in key})
 
         # If variable mf_count is not present, add it (1 measurement per time point)
@@ -1252,15 +1258,9 @@ def combine_datasets(network, species, site,
     ds_combined = format_attributes(ds_combined, instrument_rec,
                                     extra_attributes={"instrument_selection": instrument_selection_text})
 
-    # Extend comment attribute describing all datasets
-    if len(comments) > 1:
-        comment_str = "Combined dataset from the following individual sources:\n"
-        for i, comment in enumerate(comments):
-            comment_str += f"{i}) {comment}\n"
-    else:
-        comment_str = comments[0]
-
-    ds_combined.attrs["comment"] = comment_str
+    # Extend comment attribute describing all datasets, ordered most-recent first to
+    # match the numbered instrument_* attributes.
+    ds_combined.attrs["comment"] = combine_comments(comments, comment_dates)
 
     # Format variables
     ds_combined = format_variables(ds_combined)
@@ -1279,6 +1279,11 @@ def combine_datasets(network, species, site,
 
     # Update network attribute
     ds_combined.attrs["network"] = "/".join(set(networks))
+
+    # Data owners must credit every contributing instrument, not just the one whose
+    # attributes were inherited above (issue #169).
+    ds_combined.attrs["data_owner"], ds_combined.attrs["data_owner_email"] = \
+        combine_data_owners(data_owners, data_owner_emails)
 
     return ds_combined
 
@@ -1305,6 +1310,91 @@ def most_recent_dataset(datasets):
         raise ValueError("Need at least one dataset to find the most recent")
 
     return max(datasets, key=lambda ds: ds.time.values[-1])
+
+
+def combine_comments(comments, dates=None):
+    """Build a combined-file comment listing each contributing instrument's comment.
+
+    Identical instrument comments are de-duplicated so that instruments sharing a
+    comment (e.g. the same source note) are not listed twice (issue #175).
+
+    If instrument dates are supplied, the comments are ordered most-recent first, so
+    they run in the same direction as the numbered instrument_* attributes (which
+    format_attributes_global_instruments sorts by date descending). Otherwise order is
+    preserved from first appearance. The same ``np.argsort`` used for the instrument
+    numbering is reused here so the two orderings agree.
+
+    Args:
+        comments (list[str]): Each contributing instrument's comment attribute.
+        dates (list[str], optional): Each instrument's date, aligned with ``comments``.
+            When given, comments are ordered by date descending before de-duplication.
+
+    Returns:
+        str: A single comment string. If more than one distinct comment is present,
+            they are enumerated under a header; otherwise the sole comment is returned
+            unchanged.
+    """
+
+    if dates is not None:
+        order = np.argsort(dates)[::-1]
+        comments = [comments[i] for i in order]
+
+    unique_comments = []
+    for comment in comments:
+        if comment not in unique_comments:
+            unique_comments.append(comment)
+
+    if len(unique_comments) > 1:
+        comment_str = "Combined dataset from the following individual sources:\n"
+        for i, comment in enumerate(unique_comments):
+            comment_str += f"{i}) {comment}\n"
+    else:
+        comment_str = unique_comments[0]
+
+    return comment_str
+
+
+def combine_data_owners(owners, emails):
+    """De-duplicate data owners across the instruments in a combined file.
+
+    A combined file draws data from several instruments, which may have different
+    data owners. Taking the owner from a single instrument (issue #169) silently
+    credits one owner and drops the others, so the combined value must be the union
+    of every contributing owner.
+
+    Owners are paired with their email addresses positionally, matching the existing
+    convention where a single instrument already lists multiple people as
+    "Ray F. Weiss, Jens Muhle" / "rfweiss@ucsd.edu, jmuhle@ucsd.edu". Pairs are
+    de-duplicated while preserving first-seen order (i.e. the data_combination
+    order of the instruments), so owner and email stay aligned.
+
+    Args:
+        owners (list[str]): Each instrument's data_owner attribute, in data_combination
+            order. Individual entries may themselves be ", "-separated lists of people.
+        emails (list[str]): Each instrument's data_owner_email attribute, aligned with
+            owners.
+
+    Returns:
+        tuple[str, str]: The combined (data_owner, data_owner_email), each a
+            ", "-separated string, kept as a plain string to match the input encoding
+            and the existing convention.
+    """
+
+    seen = []
+
+    for owner, email in zip(owners, emails):
+        names = [n.strip() for n in owner.split(",")] if owner else []
+        addrs = [a.strip() for a in email.split(",")] if email else []
+
+        for i, name in enumerate(names):
+            if not name:
+                continue
+            addr = addrs[i] if i < len(addrs) else ""
+            pair = (name, addr)
+            if pair not in seen:
+                seen.append(pair)
+
+    return ", ".join(name for name, _ in seen), ", ".join(addr for _, addr in seen)
 
 
 def _read_combined_instrument_datasets(network, species, site, dataset_reader):
@@ -1415,6 +1505,20 @@ def combine_baseline(network, species, site,
     # Take global attributes from the most recently operating instrument, for consistency
     # with combine_datasets (issue #167)
     ds_combined.attrs = most_recent_dataset(dss).attrs.copy()
+
+    # Mirror the combined mole fraction file's instrument provenance exactly, rather than
+    # inheriting a single instrument's identity from most_recent_dataset above (issue
+    # #168). reference_dataset is that mole fraction dataset, and already carries the full
+    # set: instrument, instrument_1..n, instrument_type and the matching date/comment
+    # attributes, including the type-prefixed detector identifiers (issue #148). Copying
+    # them verbatim keeps the baseline and mole fraction files consistent, instead of
+    # rebuilding bare type names from the baseline inputs (which have no detector names).
+    for attr in list(ds_combined.attrs):
+        if "instrument" in attr and attr != "instrument_selection":
+            del ds_combined.attrs[attr]
+    for attr, value in reference_dataset.attrs.items():
+        if "instrument" in attr and attr != "instrument_selection":
+            ds_combined.attrs[attr] = value
 
     # Global attributes
     ds_combined.attrs["instrument_selection"] = instrument_selection_text

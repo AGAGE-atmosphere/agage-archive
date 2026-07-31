@@ -9,6 +9,7 @@ from agage_archive.config import open_data_file, data_file_path
 from agage_archive.run import run_individual_instrument
 from agage_archive.formatting import format_attributes
 from agage_archive.formatting import format_variables
+from agage_archive.formatting import prefix_instrument_type
 
 
 def check_cf_compliance(dataset):
@@ -152,3 +153,17 @@ def test_format_attributes():
     assert ds.attrs["frequency"] == "high-frequency"
     assert ds.attrs["instrument_selection"] == "test"
     assert ds.attrs["version"] == "testv1"
+
+
+def test_prefix_instrument_type():
+    """Instrument identifiers are prefixed with their type where that adds info (#148)."""
+
+    # An opaque identifier gains its type, using the " - " separator from the issue
+    assert prefix_instrument_type("agilent_5975", "GCMS-Medusa") == "GCMS-Medusa - agilent_5975"
+    # An identifier equal to its type is left unchanged (no "GCMD - GCMD")
+    assert prefix_instrument_type("GCMD", "GCMD") == "GCMD"
+    # An identifier already beginning with its type is left unchanged
+    assert prefix_instrument_type("GAGE_GCMD", "GAGE") == "GAGE_GCMD"
+    assert prefix_instrument_type("GCMS-ADS", "GCMS-ADS") == "GCMS-ADS"
+    # No type available: return the identifier untouched
+    assert prefix_instrument_type("agilent_5975", "") == "agilent_5975"

@@ -10,7 +10,7 @@ from agage_archive.config import Paths, open_data_file, load_json
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
     read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function, \
-    _merge_duplicate_flask_measurements, output_write
+    _merge_duplicate_flask_measurements, output_write, combine_data_owners, combine_comments
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
 from agage_archive.data_selection import read_data_combination
@@ -135,9 +135,78 @@ def test_combine_datasets():
     # Test that the instrument_type attribute has been added
     assert ds.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
 
+    # Numbered instrument attributes are prefixed with their instrument type so a reader
+    # can tell which type each identifier belongs to (#148). Self-describing identifiers
+    # (GCMD, GAGE_GCMD, ALE_GCMD) already begin with their type and are left unchanged.
+    assert ds.attrs["instrument"] == "GCMS-Medusa - agilent_5975"
+    assert ds.attrs["instrument_1"] == "GCMS-Medusa - agilent_5973"
+    assert ds.attrs["instrument_2"] == "GCMD"
+    assert ds.attrs["instrument_3"] == "GAGE_GCMD"
+    assert ds.attrs["instrument_4"] == "ALE_GCMD"
+
+    # The combined comment lists sources most-recent first, so it runs in the same
+    # direction as the numbered instrument_* attributes (Medusa, GCMD, GAGE, ALE).
+    comment = ds.attrs["comment"]
+    assert comment.index("GCMS-Medusa measurements") < comment.index("GCMD measurements")
+    assert comment.index("GCMD measurements") < comment.index("GAGE ch3ccl3 data")
+    assert comment.index("GAGE ch3ccl3 data") < comment.index("ALE ch3ccl3 data")
+
+    # data_owner is the de-duplicated union of the contributing instruments (#169).
+    # Every instrument at CGO shares this owner, so the union is a single name here;
+    # the union behaviour itself is covered directly in test_combine_data_owners.
+    assert ds.attrs["data_owner"] == "Paul Krummel"
+    assert ds.attrs["data_owner_email"] == "paul.krummel@csiro.au"
+
     # Check that types are all as specified in variables.json
     for var_name in ds.data_vars.keys():
         type_test(ds[var_name].values[0], var_name)
+
+
+def test_combine_data_owners():
+    """A combined file must credit every contributing instrument's data owner (#169)."""
+
+    # Identical owners across instruments collapse to a single entry
+    assert combine_data_owners(["Paul Krummel", "Paul Krummel"],
+                               ["paul.krummel@csiro.au", "paul.krummel@csiro.au"]) == \
+        ("Paul Krummel", "paul.krummel@csiro.au")
+
+    # Distinct owners are unioned in data_combination order, and the email list stays
+    # aligned with the owner list. Note each instrument may itself list several people.
+    owners, emails = combine_data_owners(
+        ["Ray F. Weiss, Jens Muhle", "Simon O'Doherty"],
+        ["rfweiss@ucsd.edu, jmuhle@ucsd.edu", "s.odoherty@bristol.ac.uk"])
+    assert owners == "Ray F. Weiss, Jens Muhle, Simon O'Doherty"
+    assert emails == "rfweiss@ucsd.edu, jmuhle@ucsd.edu, s.odoherty@bristol.ac.uk"
+
+    # A person present in two instruments' lists appears only once, order-stable
+    assert combine_data_owners(["A, B", "B, C"], ["a@x, b@x", "b@x, c@x"]) == \
+        ("A, B, C", "a@x, b@x, c@x")
+
+    # Empty owner/email entries are skipped rather than producing blank list members
+    assert combine_data_owners(["", "Dickon Young"], ["", "dickon.young@bristol.ac.uk"]) == \
+        ("Dickon Young", "dickon.young@bristol.ac.uk")
+
+
+def test_combine_comments():
+    """Identical instrument comments are listed once in the combined comment (#175)."""
+
+    # A single comment is returned unchanged
+    assert combine_comments(["only comment"]) == "only comment"
+
+    # Distinct comments are enumerated under a header, in order
+    assert combine_comments(["first", "second"]) == \
+        "Combined dataset from the following individual sources:\n0) first\n1) second\n"
+
+    # Identical comments are de-duplicated, so two instruments sharing a comment do not
+    # produce a repeated entry; distinct comments around them are preserved in order
+    assert combine_comments(["same", "same"]) == "same"
+    assert combine_comments(["a", "same", "same", "b"]) == \
+        "Combined dataset from the following individual sources:\n0) a\n1) same\n2) b\n"
+
+    # When instrument dates are supplied, comments are ordered most-recent first, to
+    # match the numbered instrument_* attributes
+    assert combine_comments(["old", "new"], ["2000-01-01", "2020-01-01"]) == \
+        "Combined dataset from the following individual sources:\n0) new\n1) old\n"
 
 
 def test_read_nc_path():
@@ -207,6 +276,21 @@ def test_combine_baseline():
     # Check that ds_baseline has the same timestamps as the output of combine_datasets
     ds = combine_datasets("agage_test", "CH3CCl3", "CGO", verbose=False)
     assert (ds_baseline.time.values == ds.time.values).all()
+
+    # The combined baseline mirrors the combined mole fraction file's instrument
+    # provenance exactly, rather than inheriting a single instrument (#168). It carries
+    # the same type-prefixed detector identifiers (#148), not bare type names: previously
+    # it reported instrument = instrument_type = "GCMS-Medusa".
+    assert ds_baseline.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
+    assert ds_baseline.attrs["instrument"] == "GCMS-Medusa - agilent_5975"
+    assert ds_baseline.attrs["instrument_1"] == "GCMS-Medusa - agilent_5973"
+    assert ds_baseline.attrs["instrument_2"] == "GCMD"
+    assert ds_baseline.attrs["instrument_3"] == "GAGE_GCMD"
+    assert ds_baseline.attrs["instrument_4"] == "ALE_GCMD"
+    # Every instrument* attribute matches the mole fraction file verbatim
+    for attr, value in ds.attrs.items():
+        if "instrument" in attr and attr != "instrument_selection":
+            assert ds_baseline.attrs[attr] == value
 
     # Check that baseline values are selected from the same instrument as combined data
     instruments = read_data_combination("agage_test", "ch3ccl3", "CGO")

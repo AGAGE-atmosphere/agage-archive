@@ -5,7 +5,8 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-31 (T7 input-file checker added; run_all check_inputs hook)
+**Last updated:** 2026-07-31 (A1–A4 combined-file attributes: owner union, baseline
+provenance, comment de-dup; plus comment ordering + #148 instrument-type prefix)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -129,34 +130,45 @@ metadata wins) is only the first slice of it.
       both `combine_datasets` and `combine_baseline`. Affects `inlet_latitude`,
       `inlet_longitude`, `inlet_base_elevation_masl`, `inlet_comment`.
 
-- [ ] **A1 — Data owners must be the union across contributing instruments** (#169).
-      `data_owner` and `data_owner_email` are currently single-valued and taken from one
-      instrument, so a combined record silently credits one owner and drops the others.
-      These need to become a de-duplicated list of every owner whose data is in the file,
-      order-stable. Decide the delimiter and make sure it survives the netCDF attribute
-      round-trip and the CSV archive (`nc_to_csv` in [util.py](agage_archive/util.py)
-      rewrites commas to semicolons, so a comma-delimited list would be mangled there).
+- [x] **A1 — Data owners must be the union across contributing instruments** (#169).
+      ✅ Done 2026-07-31. `data_owner`/`data_owner_email` were single-valued, taken from
+      the one instrument whose attributes were inherited. `combine_data_owners`
+      ([io.py](agage_archive/io.py)) now de-duplicates the union across contributors,
+      ordered by the `data_combination` file, kept as the existing `", "`-separated
+      **string** (decided over a netCDF list to avoid an encoding change and round-trip
+      churn; the value already comma-joins multiple people within one instrument). Owner
+      and email are paired positionally so they stay aligned. No effect in the fixture
+      (every CGO instrument shares one owner), so the rule is pinned by a direct unit test,
+      `test_combine_data_owners`, per A4.
 
-- [ ] **A2 — The combined baseline-flags file misreports its provenance** (#168). Pre-existing,
-      exposed by #167. `combine_baseline` inherits one instrument's attributes, so the
-      combined CGO `ch3ccl3` baseline file says `instrument: GCMS-Medusa` and
-      `instrument_type: GCMS-Medusa` even though it spans ALE+GAGE+GCMD+Medusa. The
-      combined *mole fraction* file does this correctly — `format_attributes` gives it
-      `instrument` … `instrument_4` and `instrument_type: ALE/GAGE/GCMD/GCMS-Medusa`.
-      Before #167 it said `ALE`; now it says `GCMS-Medusa`. Both are wrong.
+- [x] **A2 — The combined baseline-flags file misreports its provenance** (#168).
+      ✅ Done 2026-07-31. `combine_baseline` inherited one instrument's identity, so the
+      combined CGO `ch3ccl3` baseline said `instrument = instrument_type = GCMS-Medusa`
+      for a file spanning ALE+GAGE+GCMD+Medusa. It now copies the full instrument
+      provenance — `instrument`, `instrument_1` … `instrument_n`, `instrument_type` and the
+      matching `instrument_date*`/`instrument_comment*` — **verbatim from the combined mole
+      fraction file** (`reference_dataset`), so the baseline is a faithful mirror rather
+      than an independently-rebuilt approximation. An earlier attempt rebuilt the provenance
+      from the baseline inputs, which only carry bare instrument-type names, so the baseline
+      showed `GCMS-Medusa`/`GCMD`/`GAGE`/`ALE` instead of the type-prefixed detector
+      identifiers (`GCMS-Medusa - agilent_5975`, `GAGE_GCMD`, …) the MF file carries — the
+      inconsistency Matt flagged. Changed 7 combined baseline files.
 
-- [ ] **A3 — Audit every other global attribute for the same class of error.** Work
-      through `data/attributes.json` and decide, per attribute, whether a combined file
-      should take the most recent value, the union, or something computed. Candidates
-      that look wrong today: `doi`, `citation`, `contact`, `comment` (#175: currently
-      concatenated without de-duplicating identical instrument comments),
-      `calibration_scale` (already validated as identical across instruments, so
-      single-valued is correct).
+- [x] **A3 — Audit every other global attribute for the same class of error.**
+      ✅ Done 2026-07-31. Worked through the two attribute paths. **Mole fraction path**
+      (schema-driven `format_attributes`): `inlet_*` already handled by #167,
+      `calibration_scale` validated identical across instruments (single-valued correct),
+      `doi` empty; the one live item was `comment` (#175), now de-duplicated via
+      `combine_comments` — identical instrument comments are listed once (no fixture change,
+      the CGO comments happen to differ; pinned by `test_combine_comments`). **Baseline
+      path** (inherits raw attrs): `inlet_*`/`station_long_name` correct under #167;
+      `citation`/`contact` come from `baseline_attrs` and are identical across instruments;
+      `instrument`/`instrument_type` fixed by A2.
 
-- [ ] **A4 — Pin the decisions in a test.** Once A1–A3 land, the golden manifest will
-      capture the values, but add an explicit test asserting the *rule* (e.g. that the
-      combined CGO `ch3ccl3` file lists every contributing instrument's data owner) so
-      the intent survives a future manifest regeneration.
+- [x] **A4 — Pin the decisions in a test.** ✅ Done 2026-07-31. `test_combine_data_owners`
+      and `test_combine_comments` assert the union/de-dup rules directly (the fixture does
+      not exercise them); `test_combine_baseline` asserts the combined baseline lists every
+      contributing instrument; `test_combine_datasets` asserts the combined owner.
 
 **Constraint:** every item here changes published attribute values, so each needs an
 explicit decision recorded in the log below before it lands.
@@ -536,6 +548,11 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-29 | B12 (`start_date` too early in individual-instrument files) was approved for a later PR. Preferred approach: compute the date attributes at write time in `output_dataset` rather than in each reader. |
 | 2026-07-30 | B12 fix approved for landing: recompute `start_date` and `end_date` in `output_dataset` after final filtering. This intentionally changes published attributes on affected files; regenerate the golden manifest after review. |
 | 2026-07-30 | **Reviewed `run_all`/`combine_datasets` structure.** Two issues confirmed. (1) The per-site/per-species split and `(site, species, error)` tuple threading in `run_all` and the `run_*_instruments` functions is residue from an abandoned parallelisation attempt — added as S6 (Phase 4, gated on T1). (2) Each source file is read twice (individual + combined workflows), but the two products legitimately differ (instrument-specific vs `"combined"` scale, the extra `combined=True` exclusion, `data_combination` date-windowing) and the dominant cost is config re-parsing, not raw I/O. **Merging the two workflows was considered and rejected** — high output-risk for little gain, and it would also have to preserve the combined-before-individual ordering that the top-level-file existing check depends on. The genuinely shared work (raw read+resample, before the products diverge) is captured as a caching item, P6 (Phase 2), not a structural merge. |
+| 2026-07-31 | **A1 (#169) — combined data owners are the union across contributing instruments.** Chosen representation: keep `data_owner`/`data_owner_email` as the existing `", "`-separated string (not a netCDF list), de-duplicated on (name, email) pairs, ordered by the `data_combination` file. Rationale: a single instrument already comma-joins multiple people, so this extends the existing convention without changing attribute encoding or risking netCDF round-trip / manifest churn; `nc_to_csv`'s comma→semicolon rewrite then applies uniformly. Changes published owner attributes on real combined files; no change in the fixture (uniform owners), so the rule is pinned by a unit test. |
+| 2026-07-31 | **A2 (#168) — combined baseline-flags files report full instrument provenance.** Chosen to mirror the combined mole fraction file. **Corrected implementation:** the baseline copies the instrument provenance (`instrument`/`instrument_1…n`, `instrument_type`, `instrument_date*`, `instrument_comment*`) **verbatim from the reference mole fraction dataset**, so it is a true mirror. The first attempt rebuilt it from the baseline inputs via `format_attributes_global_instruments`; because those inputs only carry bare type names, the baseline showed `GCMS-Medusa`/`GCMD`/`GAGE`/`ALE` instead of the MF file's type-prefixed detector identifiers — flagged in review as "overwriting rather than prefixing". Changed 7 combined baseline files; manifest regenerated. |
+| 2026-07-31 | **A3/#175 — combined comments de-duplicate identical instrument comments.** Distinct comments are still enumerated in order; identical ones are listed once. No fixture change (the CGO instrument comments differ); pinned by a unit test. Audit otherwise found no further combined-attribute errors (`calibration_scale` single-valued is correct; `inlet_*` handled by #167). |
+| 2026-07-31 | **Combined comment ordering — most-recent first.** The combined `comment` ran oldest-first while the numbered `instrument_*` attributes ran newest-first; the two disagreed in direction (a reader could not line them up). Chose the lowest-risk fix: reverse the *comment* to newest-first (in `combine_comments`, using the same date sort as the instrument numbering) rather than renumber `instrument_*`. Renumbering was rejected because newest-first `instrument_*` is the entrenched convention — it matches individual files (`instrument` = current detector) and #167's anchoring on the most recent instrument. Note the two lists still cannot index-align, because the comment has one entry per `data_combination` instrument while `instrument_*` has one per physical detector (Medusa = two). Changed the comment on 10 combined files. |
+| 2026-07-31 | **#148 — instrument identifiers prefixed with their type in combined files.** Numbered instrument attributes now read e.g. `"GCMS-Medusa - agilent_5975"` (issue's `" - "` separator), so an opaque identifier is attributable to a type. Skipped when the identifier already begins with its type (`GCMD`, `GAGE_GCMD`, `ALE_GCMD`, `GCMS-ADS`), to avoid bloat/duplication. Combined files only (individual files have an unambiguous `instrument_type`); affected the 2 `ch3ccl3` files that carry Medusa's two detectors. Closes #148. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
 
 ### Open questions
