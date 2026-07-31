@@ -70,32 +70,36 @@ def drop_duplicates(ds):
     if len(ds.time) == len(ds.time.drop_duplicates(dim="time")):
         return ds
 
-    # Instrument-type priority: the order in which instrument types first appear in the
-    # record. The earlier an instrument type appears, the higher its priority when two
-    # real values collide at the same timestamp.
-    priority = {}
+    # Rank each instrument type by when its data first appears in the record: the
+    # instrument that starts earliest gets rank 0, the next new one rank 1, and so on.
+    # When two real values collide at the same timestamp, the value from the
+    # earliest-starting instrument (the lowest rank) is kept and the later-starting
+    # one is dropped.
+    first_appearance_rank = {}
     for instrument in ds.instrument_type.values:
-        if instrument not in priority:
-            priority[instrument] = len(priority)
+        if instrument not in first_appearance_rank:
+            first_appearance_rank[instrument] = len(first_appearance_rank)
 
     is_nan = np.isnan(ds.mf.values)
-    ranks = np.array([priority[instrument] for instrument in ds.instrument_type.values])
+    ranks = np.array([first_appearance_rank[instrument]
+                      for instrument in ds.instrument_type.values])
 
-    # For each timestamp keep exactly one row, chosen by, in order:
-    #   1. a real value over a NaN,
-    #   2. among real values, the highest-priority (earliest-appearing) instrument type,
-    #   3. earliest position in the record.
-    # Instrument priority must not decide between NaNs — an all-NaN group keeps its first
-    # row regardless of instrument — so the priority key is zeroed for NaN rows. They can
-    # never win a mixed group anyway, since a real value always outranks a NaN.
+    # For each timestamp keep exactly one row. Sorting ascending on these keys and taking
+    # the first row per timestamp applies the tie-breaks in order:
+    #   1. is_nan   — a real value (False) is kept over a NaN (True);
+    #   2. rank     — among real values, keep the earliest-starting instrument, drop later;
+    #   3. position — otherwise fall back to the earliest row in the record.
+    # Rank must not decide between NaNs — an all-NaN timestamp keeps its first row
+    # whatever the instruments — so the rank key is zeroed for NaN rows. That can't let a
+    # NaN win a mixed timestamp, because is_nan already sorts every real value ahead of it.
     selection = pd.DataFrame({
         "time": ds.time.values,
         "is_nan": is_nan,
-        "priority": np.where(is_nan, 0, ranks),
+        "rank": np.where(is_nan, 0, ranks),
         "position": np.arange(len(ds.time)),
     })
 
-    keep = selection.sort_values(["time", "is_nan", "priority", "position"]) \
+    keep = selection.sort_values(["time", "is_nan", "rank", "position"]) \
                     .drop_duplicates("time", keep="first")["position"].to_numpy()
     keep.sort()
 
