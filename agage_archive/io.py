@@ -70,52 +70,36 @@ def drop_duplicates(ds):
     if len(ds.time) == len(ds.time.drop_duplicates(dim="time")):
         return ds
 
-    # Find list of instrument_types, and sort them by the order in which they appeared
-    instrument_types = []
+    # Instrument-type priority: the order in which instrument types first appear in the
+    # record. The earlier an instrument type appears, the higher its priority when two
+    # real values collide at the same timestamp.
+    priority = {}
     for instrument in ds.instrument_type.values:
-        if instrument not in instrument_types:
-            instrument_types.append(instrument)
+        if instrument not in priority:
+            priority[instrument] = len(priority)
 
-    # Create a column to drop duplicates
-    ds["drop"] = xr.full_like(ds.time, 1., dtype=float)
-    ds["i"] = xr.full_like(ds.time, 0, dtype=int)
-    ds["i"].values = np.arange(0, len(ds.time), 1)
+    is_nan = np.isnan(ds.mf.values)
+    ranks = np.array([priority[instrument] for instrument in ds.instrument_type.values])
 
-    timestamps = ds.time.to_series()
-    duplicated_timestamps = timestamps[timestamps.duplicated(keep="first")]
+    # For each timestamp keep exactly one row, chosen by, in order:
+    #   1. a real value over a NaN,
+    #   2. among real values, the highest-priority (earliest-appearing) instrument type,
+    #   3. earliest position in the record.
+    # Instrument priority must not decide between NaNs — an all-NaN group keeps its first
+    # row regardless of instrument — so the priority key is zeroed for NaN rows. They can
+    # never win a mixed group anyway, since a real value always outranks a NaN.
+    selection = pd.DataFrame({
+        "time": ds.time.values,
+        "is_nan": is_nan,
+        "priority": np.where(is_nan, 0, ranks),
+        "position": np.arange(len(ds.time)),
+    })
 
-    for timestamp in duplicated_timestamps:
+    keep = selection.sort_values(["time", "is_nan", "priority", "position"]) \
+                    .drop_duplicates("time", keep="first")["position"].to_numpy()
+    keep.sort()
 
-        ds_duplicates = ds.sel(time=timestamp)
-        
-        # Is the mf a NaN for any of these?
-        i_nan = ds_duplicates["i"][np.isnan(ds_duplicates.mf.values)].values
-
-        # If they are all NaN, drop all but the first
-        if len(i_nan) == len(ds_duplicates["i"]):
-            ds["drop"].values[i_nan[1:]] = np.nan
-        elif len(i_nan) > 0:
-            # If there are one or more NaNs, drop them
-            ds["drop"].values[i_nan] = np.nan
-        else:
-            pass
-        
-        # If there is more than one remaining value that isn't a NaN, 
-        # drop the one which appears first in the instrument_types list
-        i_not_nan = ds_duplicates["i"][~np.isnan(ds_duplicates.mf.values)].values
-        if len(i_not_nan) > 1:
-            instruments_not_nan = [ds["instrument_type"].values[i] for i in i_not_nan]
-            instrument_to_keep = instrument_types[min([instrument_types.index(instrument) for instrument in instruments_not_nan])]
-            i_to_keep = [i for i in i_not_nan if ds["instrument_type"].values[i] == instrument_to_keep][0]
-            i_to_drop = [i for i in i_not_nan if i != i_to_keep]
-            ds["drop"].values[i_to_drop] = np.nan
-
-    ds = ds.dropna(dim="time", subset=["drop"])
-
-    # Remove the i and drop variables
-    ds = ds.drop_vars(["i", "drop"])
-
-    return ds
+    return ds.isel(time=keep)
 
 
 def define_instrument_type(ds, instrument):
