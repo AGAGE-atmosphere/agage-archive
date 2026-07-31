@@ -10,8 +10,7 @@ from agage_archive.config import Paths, open_data_file, data_file_list, \
 from agage_archive.convert import scale_convert
 from agage_archive.convert import resample as resample_function
 from agage_archive.formatting import format_species, \
-    format_variables, format_attributes, format_species_flask, \
-    format_attributes_global_instruments
+    format_variables, format_attributes, format_species_flask
 from agage_archive.data_selection import read_release_schedule, read_data_exclude, \
     read_data_combination, calibration_scale_default
 from agage_archive.definitions import instrument_type_definition, get_instrument_type, \
@@ -1507,21 +1506,19 @@ def combine_baseline(network, species, site,
     # with combine_datasets (issue #167)
     ds_combined.attrs = most_recent_dataset(dss).attrs.copy()
 
-    # Summarise the instrument provenance across every contributing instrument, mirroring
-    # the combined mole fraction file, rather than inheriting a single instrument's
-    # identity from most_recent_dataset above. Otherwise a baseline file spanning
-    # ALE+GAGE+GCMD+Medusa would report instrument = instrument_type = "GCMS-Medusa"
-    # (issue #168).
-    instrument_rec = [{"instrument": ds.attrs["instrument"],
-                       "instrument_date": str(ds.time[0].dt.strftime("%Y-%m-%d").values),
-                       "instrument_comment": ds.attrs.get("instrument_comment", "")}
-                      for ds in dss]
-    ds_combined = format_attributes_global_instruments(ds_combined, instrument_rec)
-
-    # instrument_type lists every instrument, ordered like the mole fraction file.
-    instrument_numbers = list(np.unique(ds_candidates.instrument_type.values))
-    ds_combined.attrs["instrument_type"] = "/".join(get_instrument_type(instrument_numbers,
-                                                                        network))
+    # Mirror the combined mole fraction file's instrument provenance exactly, rather than
+    # inheriting a single instrument's identity from most_recent_dataset above (issue
+    # #168). reference_dataset is that mole fraction dataset, and already carries the full
+    # set: instrument, instrument_1..n, instrument_type and the matching date/comment
+    # attributes, including the type-prefixed detector identifiers (issue #148). Copying
+    # them verbatim keeps the baseline and mole fraction files consistent, instead of
+    # rebuilding bare type names from the baseline inputs (which have no detector names).
+    for attr in list(ds_combined.attrs):
+        if "instrument" in attr and attr != "instrument_selection":
+            del ds_combined.attrs[attr]
+    for attr, value in reference_dataset.attrs.items():
+        if "instrument" in attr and attr != "instrument_selection":
+            ds_combined.attrs[attr] = value
 
     # Global attributes
     ds_combined.attrs["instrument_selection"] = instrument_selection_text

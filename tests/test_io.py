@@ -271,21 +271,26 @@ def test_combine_baseline():
     assert ds_baseline.attrs["site_code"] == "CGO"
     assert "citation" in ds_baseline.attrs.keys()
 
-    # The combined baseline reports the provenance of every contributing instrument,
-    # not just the most recently operating one, mirroring the combined mole fraction
-    # file (#168). Previously it inherited a single instrument wholesale and reported
-    # instrument = instrument_type = "GCMS-Medusa".
-    assert ds_baseline.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
-    assert ds_baseline.attrs["instrument"] == "GCMS-Medusa"
-    assert ds_baseline.attrs["instrument_1"] == "GCMD"
-    assert ds_baseline.attrs["instrument_2"] == "GAGE"
-    assert ds_baseline.attrs["instrument_3"] == "ALE"
-
     assert ds_baseline.time.attrs["long_name"] == "time"
 
     # Check that ds_baseline has the same timestamps as the output of combine_datasets
     ds = combine_datasets("agage_test", "CH3CCl3", "CGO", verbose=False)
     assert (ds_baseline.time.values == ds.time.values).all()
+
+    # The combined baseline mirrors the combined mole fraction file's instrument
+    # provenance exactly, rather than inheriting a single instrument (#168). It carries
+    # the same type-prefixed detector identifiers (#148), not bare type names: previously
+    # it reported instrument = instrument_type = "GCMS-Medusa".
+    assert ds_baseline.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
+    assert ds_baseline.attrs["instrument"] == "GCMS-Medusa - agilent_5975"
+    assert ds_baseline.attrs["instrument_1"] == "GCMS-Medusa - agilent_5973"
+    assert ds_baseline.attrs["instrument_2"] == "GCMD"
+    assert ds_baseline.attrs["instrument_3"] == "GAGE_GCMD"
+    assert ds_baseline.attrs["instrument_4"] == "ALE_GCMD"
+    # Every instrument* attribute matches the mole fraction file verbatim
+    for attr, value in ds.attrs.items():
+        if "instrument" in attr and attr != "instrument_selection":
+            assert ds_baseline.attrs[attr] == value
 
     # Check that baseline values are selected from the same instrument as combined data
     instruments = read_data_combination("agage_test", "ch3ccl3", "CGO")
