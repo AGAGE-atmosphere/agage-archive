@@ -5,7 +5,7 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-31 (P4 drop_duplicates vectorised; T5 done)
+**Last updated:** 2026-07-31 (P6 raw ALE/GAGE read cached; P5 WONTFIX; P7 logged)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
@@ -330,25 +330,36 @@ under `PYTHONHASHSEED` 0 and 12345. PR bundles the three as separate commits.
       new — including the all-NaN branch (was unexecuted, covers T5's duplicate case) and a
       check that extra data variables ride along. Micro-benchmark (6000 rows, 3000 dropped):
       **2185 ms → 5.6 ms (~390×)**; golden manifest (directory + zip) byte-identical.
-- [ ] **P5 — Stop calling `format_variables` two or three times per dataset.** It rebuilds
-      the whole Dataset and re-reads three JSON files each time (`read_nc`, then
-      `combine_datasets`).
-- [ ] **P6 — Cache the raw per-instrument read+resample shared by both workflows.** Every
-      source file is read and resampled once for the individual product
-      (`run_individual_site` → `read_function`) and again for the combined product
-      (`combine_datasets` → `_read_combined_instrument_datasets` → same `read_function`).
-      Cache the raw read+resample keyed on `(network, species, site, instrument)` and let
-      each workflow apply its own downstream transforms. **The two products legitimately
-      diverge *after* the raw read** — the individual file uses the instrument-specific
-      scale (`choose_scale_defaults_file(network, instrument, site)`) while the combined
-      file uses the `"combined"` scale, the combined path applies an extra
-      `read_data_exclude(..., combined=True)` layer, and it slices to the `data_combination`
-      date window — so the cache must sit before scale conversion, the combined exclusion,
-      and windowing, not after. This is a caching change, **not** a merge of the two
-      workflows (see decisions log 2026-07-30).
+- [x] **P5 — Stop calling `format_variables` two or three times per dataset.** ❌ WONTFIX
+      (2026-07-31) — subsumed by P1. It is still called 5× per `combine_datasets`, but now
+      costs **6 ms (0% of the call)**: P1's `load_json` cache removed the JSON re-reads that
+      were its whole rationale. Removing the calls would save ~5 ms while touching
+      output-defining code (Phase 4 S2 territory) — bad risk/reward. Profiling instead
+      pointed at the real costs: the fixed-width ALE/GAGE file reads (~53%, addressed by P6)
+      and the sympy calibration-scale conversion (~33%, logged as P7).
+- [x] **P6 — Cache the raw per-instrument read shared across species and workflows.** ✅ Done
+      2026-07-31. The originally-planned "split before `scale_convert`" boundary turned out
+      non-uniform (`read_gcwerks_flask` bakes scale in via `format_attributes`/
+      `format_variables`, not a trailing `scale_convert`), and profiling showed the dominant
+      redundant cost is the ALE/GAGE *file read*, not resample. `read_ale_gage` opens a tar
+      of monthly fixed-width files and builds a dataframe of **all species**; species
+      selection happens only afterwards. Extracted that species-independent core into
+      `_read_ale_gage_raw(network, site, instrument, utc)`, memoised (copy-on-return). It is
+      shared across every species *and* across the individual/combined workflows, which each
+      re-read the whole archive today. **Full `run_all` on `agage_test`: 65.0 s → 35.6 s
+      (45%)**; golden manifest (directory + zip) byte-identical.
+- [ ] **P7 — Cache the calibration-scale conversion (new, from P5 profiling).** ~33% of a
+      `combine_datasets` call is `openghg_calscales.convert` rebuilding the sympy scale
+      graph (`_scale_graph` → `nsimplify`/`pslq`) on every read. The derivation depends only
+      on `(species, scale_from, scale_to)`, not the data, so it is cacheable in principle —
+      but conversions can be **non-linear** (polynomial), so a scalar-factor cache is unsafe,
+      and doing it properly means caching the library's private `_scale_graph` or an upstream
+      contribution to `openghg_calscales`. Higher effort, dependency-bound; assess before
+      committing.
 
 **Target:** ≥40% reduction in wall time for a full `agage_test` run, byte-identical output
-modulo the three volatile attributes.
+modulo the three volatile attributes. **Met by P6 alone (45%);** P1–P3 (config/JSON) and
+P4 (drop_duplicates) compound on top.
 
 ---
 
