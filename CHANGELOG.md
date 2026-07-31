@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ZIP output paths no longer create a leading slash when `output_subpath` is empty.
 - ZIP output writes now replace an existing member instead of creating duplicate members.
 - Data-exclusion processing now only skips the actual `time` coordinate, not variables whose names merely contain `time`.
+- `read_data_exclude` and the resample aggregation (`define_agg_dict`) now skip variables that are not part of the output schema, instead of raising `KeyError`. Both run before `format_variables` in `read_nc`, so raw source variables such as `run_time` (present in some GCWerks netCDF files) are still on the dataset; tightening the exclusion's `time` skip to an exact match had left them reaching a `variable_defaults` lookup with no entry. Such variables are dropped by `format_variables` anyway, so skipping them changes no output.
 - Instrument partial matching now prefers the longest matching instrument name.
 - Scale-default file selection now breaks equal-specificity ties by filename rather than filesystem order.
 - `open_data_file` now keeps a ZIP archive open for the lifetime of the member handle it returns and closes it when that handle is closed, instead of closing the archive first and relying on CPython's `ZipExtFile` reference counting to keep the closed archive readable.

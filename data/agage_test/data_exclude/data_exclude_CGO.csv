@@ -17,3 +17,4 @@ ch3ccl3,GAGE,1994-03-25 17:51,1994-03-25 17:53,Flagged by Ray Wang,
 ch3ccl3,GAGE,1994-12-29 22:40,1994-12-29 22:42,Flagged by Ray Wang,
 ch3ccl3,GAGE,1990-09-04 22:00,1990-09-04 23:00,MR flagged duplicate timestamp at 08:44 local time,
 ch3ccl3,ALE,1972-01-01 06:00,1972-01-01 07:00,Just included for testing,y
+ch3ccl3,GCMD,1972-01-01 00:00,1972-01-01 01:00,run_time exclude-path coverage; range predates all GCMD data so nothing is excluded,

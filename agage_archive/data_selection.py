@@ -312,7 +312,12 @@ def read_data_exclude(ds, species, site, instrument,
         for start, end in data_exclude.values:
             exclude_dict = dict(time = slice(start, end))
             for var in ds.variables:
-                if var == "time":
+                # Skip the time coordinate, and any auxiliary source variable (e.g.
+                # run_time) that is not part of the output schema: it has no
+                # remove_flagged policy, and format_variables drops it downstream, so
+                # there is nothing to exclude. read_data_exclude runs before
+                # format_variables in read_nc, so these raw variables are still present.
+                if var == "time" or var not in variable_defaults:
                     continue
                 elif variable_defaults[var]["remove_flagged"] == "True":
                     ds[var].loc[exclude_dict] = np.nan

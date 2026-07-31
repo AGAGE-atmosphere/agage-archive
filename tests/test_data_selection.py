@@ -104,6 +104,36 @@ def test_read_data_exclude():
         assert ds["mf"][2].values == 3
 
 
+def test_read_data_exclude_skips_unknown_variables():
+    '''An auxiliary variable that is not in the output schema (e.g. run_time) must be left
+    untouched during exclusion, not raise a KeyError.
+
+    read_data_exclude runs before format_variables in read_nc, so raw source variables
+    like run_time are still present. Tightening the time-coordinate skip to var == "time"
+    (from the old "time" in var) meant run_time was no longer skipped and hit the
+    variable_defaults lookup.'''
+
+    # ALE CGO ch3ccl3 is flagged at 1978-10-12 06:00-07:00; the middle point is inside it.
+    ds = xr.Dataset(
+        {
+            "mf": (["time"], np.array([1., 2., 3.])),
+            "run_time": (["time"], np.array([10., 20., 30.])),
+        },
+        coords={
+            "time": pd.date_range(start="1978-10-12 05:30",
+                                  end="1978-10-12 07:30", periods=3),
+        },
+    )
+    ds.attrs["network"] = "agage_test"
+
+    ds = read_data_exclude(ds, "ch3ccl3", "CGO", "ALE")
+
+    # mf inside the flagged window is excluded...
+    assert np.isnan(ds["mf"][1].values)
+    # ...but run_time, which is not in the schema, is left completely untouched
+    assert list(ds["run_time"].values) == [10., 20., 30.]
+
+
 def test_read_release_schedule():
     '''Test read_release_schedule function
 

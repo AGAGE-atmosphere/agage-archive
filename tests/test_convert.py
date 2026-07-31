@@ -3,8 +3,27 @@ import pandas as pd
 import numpy as np
 import warnings
 
+from agage_archive.config import load_json
 from agage_archive.convert import resample, grouper, resampler, resample_variability,\
-                     find_inlet_height_changes, monthly_baseline, scale_convert
+                     find_inlet_height_changes, monthly_baseline, scale_convert, \
+                     define_agg_dict
+
+
+def test_define_agg_dict_skips_unknown_variables():
+    """A non-schema variable such as run_time must be skipped, not raise a KeyError.
+
+    define_agg_dict runs during resample, before format_variables in read_nc, so raw
+    source variables can still be present. Leaving them out of the aggregation dict simply
+    drops them from the resampled result, which is correct since format_variables would
+    drop them anyway.
+    """
+
+    variable_defaults = load_json("variables.json", this_repo=True)
+
+    agg = define_agg_dict(variable_defaults, "3600s", ["time", "mf", "run_time"])
+
+    assert "mf" in agg
+    assert "run_time" not in agg
 
 
 def test_scale_convert():
