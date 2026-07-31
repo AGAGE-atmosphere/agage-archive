@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A golden manifest test (`tests/test_archive.py`) that runs the full `agage_test` archive and compares every file's path, variables, dtypes, encoding, attributes and data checksum against a checked-in reference, and asserts that no errors were written to the error logs. Regenerate the reference with `AGAGE_UPDATE_MANIFEST=1 python -m pytest tests/test_archive.py` when output changes intentionally.
 
+### Performance
+
+- Processing a full archive is substantially faster, with **byte-identical output**. A full `run_all` on the test network is roughly 45% faster, and repeated `combine_datasets` calls more so. The changes only cache or vectorise existing work:
+  - The config file (`config.yaml`) and the schema and lookup JSON files (`variables.json`, `attributes.json`, `standard_names.json`, `variables_not_public.json`, `ale_gage_sites.json`) are now parsed once and cached, rather than re-read and re-parsed hundreds of times per combined dataset. Loaders return a fresh copy each call, so callers that modify the result in place are unaffected.
+  - The instrument-number map is cached instead of re-listing the release-schedule directory on every call.
+  - The raw ALE/GAGE archive of monthly files is read once per site and instrument and shared across all species and across both the individual-instrument and combined workflows, instead of being re-parsed for each. This is the largest single saving.
+  - `drop_duplicates` is vectorised, replacing a per-timestamp loop that scaled with the square of the record length.
+  - Caches are keyed on file path and modification time where the underlying files can change between runs; the ALE/GAGE archive and instrument-number caches persist for the life of the process, so restart a long-lived session after editing those inputs.
+
 
 ## [0.2.1] - 2026-01-08
 
