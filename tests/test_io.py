@@ -10,7 +10,7 @@ from agage_archive.config import Paths, open_data_file, load_json
 from agage_archive.io import read_ale_gage, read_nc, combine_datasets, read_nc_path, \
     read_baseline, combine_baseline, output_dataset, read_gcwerks_flask, drop_duplicates, \
     read_gcms_magnum_file, read_gcms_magnum, define_instrument_type, get_data_read_function, \
-    _merge_duplicate_flask_measurements, output_write
+    _merge_duplicate_flask_measurements, output_write, combine_data_owners, combine_comments
 from agage_archive.convert import scale_convert
 from agage_archive.definitions import instrument_type_definition, get_instrument_number
 from agage_archive.data_selection import read_data_combination
@@ -135,9 +135,57 @@ def test_combine_datasets():
     # Test that the instrument_type attribute has been added
     assert ds.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
 
+    # data_owner is the de-duplicated union of the contributing instruments (#169).
+    # Every instrument at CGO shares this owner, so the union is a single name here;
+    # the union behaviour itself is covered directly in test_combine_data_owners.
+    assert ds.attrs["data_owner"] == "Paul Krummel"
+    assert ds.attrs["data_owner_email"] == "paul.krummel@csiro.au"
+
     # Check that types are all as specified in variables.json
     for var_name in ds.data_vars.keys():
         type_test(ds[var_name].values[0], var_name)
+
+
+def test_combine_data_owners():
+    """A combined file must credit every contributing instrument's data owner (#169)."""
+
+    # Identical owners across instruments collapse to a single entry
+    assert combine_data_owners(["Paul Krummel", "Paul Krummel"],
+                               ["paul.krummel@csiro.au", "paul.krummel@csiro.au"]) == \
+        ("Paul Krummel", "paul.krummel@csiro.au")
+
+    # Distinct owners are unioned in data_combination order, and the email list stays
+    # aligned with the owner list. Note each instrument may itself list several people.
+    owners, emails = combine_data_owners(
+        ["Ray F. Weiss, Jens Muhle", "Simon O'Doherty"],
+        ["rfweiss@ucsd.edu, jmuhle@ucsd.edu", "s.odoherty@bristol.ac.uk"])
+    assert owners == "Ray F. Weiss, Jens Muhle, Simon O'Doherty"
+    assert emails == "rfweiss@ucsd.edu, jmuhle@ucsd.edu, s.odoherty@bristol.ac.uk"
+
+    # A person present in two instruments' lists appears only once, order-stable
+    assert combine_data_owners(["A, B", "B, C"], ["a@x, b@x", "b@x, c@x"]) == \
+        ("A, B, C", "a@x, b@x, c@x")
+
+    # Empty owner/email entries are skipped rather than producing blank list members
+    assert combine_data_owners(["", "Dickon Young"], ["", "dickon.young@bristol.ac.uk"]) == \
+        ("Dickon Young", "dickon.young@bristol.ac.uk")
+
+
+def test_combine_comments():
+    """Identical instrument comments are listed once in the combined comment (#175)."""
+
+    # A single comment is returned unchanged
+    assert combine_comments(["only comment"]) == "only comment"
+
+    # Distinct comments are enumerated under a header, in order
+    assert combine_comments(["first", "second"]) == \
+        "Combined dataset from the following individual sources:\n0) first\n1) second\n"
+
+    # Identical comments are de-duplicated, so two instruments sharing a comment do not
+    # produce a repeated entry; distinct comments around them are preserved in order
+    assert combine_comments(["same", "same"]) == "same"
+    assert combine_comments(["a", "same", "same", "b"]) == \
+        "Combined dataset from the following individual sources:\n0) a\n1) same\n2) b\n"
 
 
 def test_read_nc_path():
@@ -201,6 +249,16 @@ def test_combine_baseline():
     assert ds_baseline.attrs["species"] == "ch3ccl3"
     assert ds_baseline.attrs["site_code"] == "CGO"
     assert "citation" in ds_baseline.attrs.keys()
+
+    # The combined baseline reports the provenance of every contributing instrument,
+    # not just the most recently operating one, mirroring the combined mole fraction
+    # file (#168). Previously it inherited a single instrument wholesale and reported
+    # instrument = instrument_type = "GCMS-Medusa".
+    assert ds_baseline.attrs["instrument_type"] == "ALE/GAGE/GCMD/GCMS-Medusa"
+    assert ds_baseline.attrs["instrument"] == "GCMS-Medusa"
+    assert ds_baseline.attrs["instrument_1"] == "GCMD"
+    assert ds_baseline.attrs["instrument_2"] == "GAGE"
+    assert ds_baseline.attrs["instrument_3"] == "ALE"
 
     assert ds_baseline.time.attrs["long_name"] == "time"
 
