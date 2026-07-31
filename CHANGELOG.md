@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A golden manifest test (`tests/test_archive.py`) that runs the full `agage_test` archive and compares every file's path, variables, dtypes, encoding, attributes and data checksum against a checked-in reference, and asserts that no errors were written to the error logs. Regenerate the reference with `AGAGE_UPDATE_MANIFEST=1 python -m pytest tests/test_archive.py` when output changes intentionally.
+- An input-file consistency checker (`agage_archive.checks.check_input_files(network)`) that validates the input configuration before a run (#97): species names in the release schedules and `data_combination` files must be defined in the network's `scale_defaults.csv` or in `standard_names.json`, every configured date must parse, and no end date may precede its start date. It reports every problem at once, each naming the offending file and value. `run_all` now runs this check by default (`check_inputs=True`) before touching the archive and aborts if any problem is found; pass `check_inputs=False` to skip it.
 
 ### Performance
 

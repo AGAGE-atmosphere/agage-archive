@@ -9,6 +9,7 @@ from agage_archive.data_selection import read_release_schedule, read_data_combin
     choose_scale_defaults_file, data_combination_species
 from agage_archive.io import combine_datasets, combine_baseline, \
     read_baseline, output_dataset, get_data_read_function
+from agage_archive.checks import check_input_files
 from agage_archive.formatting import format_species
 from agage_archive.convert import monthly_baseline
 from agage_archive.definitions import define_instrument_number, instrument_selection_text
@@ -508,7 +509,8 @@ def run_all(network,
             sites = [],
             resample=True,
             top_level_only=False,
-            flask_pair_agreement=False):
+            flask_pair_agreement=False,
+            check_inputs=True):
     """Process data files for multiple instruments. Reads the release schedule to determine which
     instruments to process
 
@@ -524,8 +526,11 @@ def run_all(network,
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
             and ignore the individual instrument folder. Default to False.
-        flask_pair_agreement (bool, optional): Only accept data points where paired flask measurements agree within 2-sigma. 
+        flask_pair_agreement (bool, optional): Only accept data points where paired flask measurements agree within 2-sigma.
             Default to False.
+        check_inputs (bool, optional): Run the input-file consistency checks
+            (`checks.check_input_files`) before processing, and abort with a single error
+            listing every problem if any are found. Default to True.
     """
 
     if not network:
@@ -560,6 +565,14 @@ def run_all(network,
 
     if not isinstance(flask_pair_agreement, bool):
         raise TypeError("flask_pair_agreement must be a boolean")
+
+    if not isinstance(check_inputs, bool):
+        raise TypeError("check_inputs must be a boolean")
+
+    # Validate the input configuration before touching the archive, so a bad config fails
+    # up front rather than part-way through a run.
+    if check_inputs:
+        check_input_files(network)
 
     path = Paths(network, errors="ignore")
 
