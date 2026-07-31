@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import numpy as np
 from zipfile import ZipFile, ZIP_DEFLATED
-import json
+from functools import lru_cache
 
 from agage_archive.config import Paths, open_data_file, data_file_list, \
     output_path, load_json
@@ -494,6 +494,84 @@ def read_ale_gage_file(f, network, site,
     return df
 
 
+@lru_cache(maxsize=None)
+def _read_ale_gage_raw(network, site, instrument, utc):
+    """Read and concatenate all monthly ALE/GAGE files for a site into one dataframe.
+
+    This is the expensive, species-independent core of read_ale_gage: opening the tar
+    archive and parsing every monthly fixed-width file (hundreds of read_fwf calls). The
+    result keeps every species' columns; read_ale_gage picks out the one it needs. Since
+    it is identical across species and across the individual and combined workflows — each
+    of which would otherwise re-read the whole archive — it is memoised on
+    (network, site, instrument, utc). Callers must copy it before mutating.
+
+    Args:
+        network (str): Network.
+        site (str): Site code.
+        instrument (str): "ALE" or "GAGE".
+        utc (bool): Convert timestamps to UTC.
+
+    Returns:
+        pd.DataFrame: All monthly records concatenated, sorted, de-NaN-indexed and
+            duplicate-checked, with every species column retained.
+    """
+
+    paths = Paths(network)
+    site_info = load_json("ale_gage_sites.json", network=network)
+
+    # Get Datetime issues list
+    with open_data_file("ale_gage_timestamp_issues.json", network=network) as f:
+        timestamp_issues = json.load(f)
+        if site in timestamp_issues[instrument]:
+            timestamp_issues = timestamp_issues[instrument][site]
+        else:
+            timestamp_issues = {}
+
+    # Path to relevant sub-folder
+    folder = paths.__getattribute__(f"{instrument}_path")
+
+    with open_data_file(f"{site_info[site]['gcwerks_name']}_sio1993.gtar.gz",
+                        network=network,
+                        sub_path=folder) as tar:
+
+        dfs = []
+
+        for member in tar.getmembers():
+
+            # Extract tar file
+            f = tar.extractfile(member)
+
+            df = read_ale_gage_file(f, network, site,
+                                timestamp_issues=timestamp_issues,
+                                utc=utc,
+                                verbose=False)
+
+            # append data frame if it's not all NaN
+            if not df.empty:
+                dfs.append(df)
+
+    # Concatenate monthly dataframes into single dataframe
+    df_combined = pd.concat(dfs)
+
+    # Sort
+    df_combined.sort_index(inplace=True)
+
+    # Check if there are NaN indices
+    if len(df_combined.index[df_combined.index.isna()]) > 0:
+        raise ValueError("NaN indices found. Check timestamp issues.")
+
+    # Drop na indices
+    df_combined = df_combined.loc[~df_combined.index.isna(), :]
+
+    # Check if there are duplicate indices
+    if len(df_combined.index) != len(df_combined.index.drop_duplicates()):
+        # Find which indices are duplicated
+        duplicated_indices = df_combined.index[df_combined.index.duplicated(keep=False)]
+        raise ValueError(f"Duplicate indices found. Check timestamp issues: {duplicated_indices}")
+
+    return df_combined
+
+
 def read_ale_gage(network, species, site, instrument,
                   verbose = True,
                   utc = True,
@@ -528,8 +606,6 @@ def read_ale_gage(network, species, site, instrument,
     if instrument not in ["ALE", "GAGE"]:
         raise ValueError("instrument must be ALE or GAGE")
 
-    paths = Paths(network)
-
     # Get data on ALE/GAGE sites
     site_info = load_json("ale_gage_sites.json", network=network)
 
@@ -537,56 +613,10 @@ def read_ale_gage(network, species, site, instrument,
     with open_data_file("ale_gage_species.json", network = network, verbose=verbose) as f:
         species_info = json.load(f)[format_species(species)]
 
-    # Get Datetime issues list
-    with open_data_file("ale_gage_timestamp_issues.json", network = network, verbose=verbose) as f:
-        timestamp_issues = json.load(f)
-        if site in timestamp_issues[instrument]:
-            timestamp_issues = timestamp_issues[instrument][site]
-        else:
-            timestamp_issues = {}
-
-    # Path to relevant sub-folder
-    folder = paths.__getattribute__(f"{instrument}_path")
-
-    with open_data_file(f"{site_info[site]['gcwerks_name']}_sio1993.gtar.gz",
-                        network = network,
-                        sub_path = folder,
-                        verbose=verbose) as tar:
-
-        dfs = []
-
-        for member in tar.getmembers():
-
-            # Extract tar file
-            f = tar.extractfile(member)
-            
-            df = read_ale_gage_file(f, network, site,
-                                timestamp_issues=timestamp_issues,
-                                utc=utc,
-                                verbose=verbose)
-
-            # append data frame if it's not all NaN
-            if not df.empty:
-                dfs.append(df)
-
-    # Concatenate monthly dataframes into single dataframe
-    df_combined = pd.concat(dfs)
-
-    # Sort
-    df_combined.sort_index(inplace=True)
-
-    # Check if there are NaN indices
-    if len(df_combined.index[df_combined.index.isna()]) > 0:
-        raise ValueError("NaN indices found. Check timestamp issues.")
-
-    # Drop na indices
-    df_combined = df_combined.loc[~df_combined.index.isna(),:]
-
-    # Check if there are duplicate indices
-    if len(df_combined.index) != len(df_combined.index.drop_duplicates()):
-        # Find which indices are duplicated
-        duplicated_indices = df_combined.index[df_combined.index.duplicated(keep=False)]
-        raise ValueError(f"Duplicate indices found. Check timestamp issues: {duplicated_indices}")
+    # Read and concatenate every monthly file (all species). This is the expensive part
+    # and is species-independent, so it is cached and shared across species and across the
+    # individual/combined workflows. Copy so downstream edits never touch the cached frame.
+    df_combined = _read_ale_gage_raw(network, site, instrument, utc).copy()
 
     # Store pollution flag
     da_baseline = (df_combined[f"{species_info['species_name_gatech']}_pollution"] != "P").astype(np.int8)
