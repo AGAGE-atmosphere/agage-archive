@@ -12,16 +12,26 @@ print-based behaviour. What logging adds:
 - Warnings and errors (``logger.warning``/``logger.error``) are never gated behind
   ``verbose`` and are always visible, with a "WARNING: "/"ERROR: " prefix that routine
   progress output does not get, so they can be told apart at a glance.
-- The console handler (``_TqdmSafeHandler``) always writes via ``tqdm.write()``, which
-  coordinates with any currently-active ``tqdm`` progress bar so a log message appears
-  above it instead of corrupting its rendering. This works whether or not a bar happens
-  to be active, so no special handling is needed around the loops in ``run.py`` that use
-  ``tqdm``.
 - A message identical to the immediately preceding one is suppressed (see
   ``_DeduplicateFilter``). Some warnings recur once per item in a large loop -- e.g. a
   site missing a piece of per-site config warns once per species processed for that
   site -- and without this, hundreds of consecutive duplicates would themselves bury
   everything else, defeating the point of making warnings always visible.
+
+The handler writes to ``sys.stderr``, resolved *at emit time* rather than captured when
+the handler is built (see ``_ConsoleHandler``). ``configure_logging`` runs at package
+import, before an IDE, debugger or notebook has swapped in its own ``sys.stderr``
+wrapper; a handler that had bound the original stream would keep writing to it, and if
+that original stream is a pipe the host has stopped reading (common under debuggers),
+the write blocks forever with no traceback. Resolving ``sys.stderr`` each time keeps
+output going to the stream the host is actually reading -- the same one ``tqdm`` draws
+its progress bars on.
+
+The handler deliberately does *not* route records through ``tqdm.write``. Coupling every
+log call to tqdm's locking was a second way to hang in some environments, and buys
+little: in the default quiet mode the only messages emitted while a bar is active are
+occasional (de-duplicated) warnings, so the cost is at most a redrawn bar, not garbled
+output.
 
 Both the formatter and the deduplicate filter are attached to the handler, not to
 ``PACKAGE_LOGGER`` itself: log calls are made on per-module child loggers (e.g.
@@ -32,8 +42,6 @@ propagate through it on their way to this handler.
 
 import logging
 import sys
-
-from tqdm import tqdm
 
 PACKAGE_LOGGER = logging.getLogger("agage_archive")
 
@@ -66,16 +74,19 @@ class _DeduplicateFilter(logging.Filter):
         return True
 
 
-class _TqdmSafeHandler(logging.StreamHandler):
-    """A StreamHandler that writes through tqdm.write() instead of the raw stream.
+class _ConsoleHandler(logging.Handler):
+    """Write records to the current ``sys.stderr``, resolved at emit time.
 
-    Safe to use whether or not a tqdm progress bar is currently active: with no bar
-    active this behaves like a plain stream write.
+    Unlike ``logging.StreamHandler``, this does not bind the stream when the handler is
+    created, so it follows any later reassignment of ``sys.stderr`` (by an IDE, debugger
+    or notebook) instead of writing to a possibly-abandoned original stream.
     """
 
     def emit(self, record):
         try:
-            tqdm.write(self.format(record), file=self.stream)
+            stream = sys.stderr
+            stream.write(self.format(record) + "\n")
+            stream.flush()
         except Exception:
             self.handleError(record)
 
@@ -90,7 +101,7 @@ def configure_logging():
 
     PACKAGE_LOGGER.setLevel(logging.INFO)
     if not PACKAGE_LOGGER.handlers:
-        handler = _TqdmSafeHandler(sys.stderr)
+        handler = _ConsoleHandler()
         handler.setFormatter(_LevelFormatter())
         handler.addFilter(_DeduplicateFilter())
         PACKAGE_LOGGER.addHandler(handler)
