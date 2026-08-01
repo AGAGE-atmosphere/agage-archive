@@ -10,6 +10,7 @@ from agage_archive.run import run_individual_instrument
 from agage_archive.formatting import format_attributes
 from agage_archive.formatting import format_variables
 from agage_archive.formatting import prefix_instrument_type
+from agage_archive.formatting import format_attributes_global_instruments
 
 
 def check_cf_compliance(dataset):
@@ -167,3 +168,23 @@ def test_prefix_instrument_type():
     assert prefix_instrument_type("GCMS-ADS", "GCMS-ADS") == "GCMS-ADS"
     # No type available: return the identifier untouched
     assert prefix_instrument_type("agilent_5975", "") == "agilent_5975"
+
+
+def test_format_attributes_global_instruments_warns_on_missing_attr_unconditionally(caught_logs):
+    """Unlike read_data_combination's opt-in warning, a missing instrument_comment here
+    always indicates a real gap in the caller-supplied instrument records, so it is
+    logged regardless of any verbose setting -- there is no verbose parameter to check."""
+
+    ds = xr.Dataset(attrs={"instrument_type": "ALE/GCMD"})
+
+    instruments = [
+        {"instrument": "GCMD", "instrument_date": "2020-01-01"},  # no instrument_comment
+        {"instrument": "ALE", "instrument_date": "1978-01-01", "instrument_comment": "old"},
+    ]
+
+    ds_out = format_attributes_global_instruments(ds, instruments)
+
+    assert ds_out.attrs["instrument_comment"] == ""
+    assert len(caught_logs) == 1
+    assert caught_logs[0].levelname == "WARNING"
+    assert "instrument_comment" in caught_logs[0].getMessage()

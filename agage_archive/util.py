@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import pytz
 import yaml
 import pandas as pd
@@ -13,6 +14,8 @@ import unicodedata
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
     output_path, load_json
+
+logger = logging.getLogger(__name__)
 
 
 def is_number(s):
@@ -408,7 +411,7 @@ def archive_to_csv(network):
                                         paths.output_path,
                                         errors="ignore_inputs")
 
-    print(f"Converting {len(files)} files to CSV format...")
+    logger.info(f"Converting {len(files)} files to CSV format...")
 
     for f in tqdm(files):
         # data_file_list yields subdirectory entries (with a trailing slash) for a
@@ -426,7 +429,7 @@ def archive_to_csv(network):
             with open_data_file(f, network, sub_path = nc_sub_path) as ncf:
                 with xr.open_dataset(ncf) as nc_ds:
                     ds = nc_ds.load()
-            
+
             # Convert to CSV
             header, df = nc_to_csv(ds)
             output_data = "\n".join(header) + "\n" + df.to_csv(index=False)

@@ -1,8 +1,10 @@
+import logging
 import shutil
 
 import pytest
 
 from agage_archive.config import data_file_path
+from agage_archive.logging_config import PACKAGE_LOGGER
 
 
 ERROR_LOGS = ("error_log_individual.txt", "error_log_combined.txt")
@@ -65,3 +67,29 @@ def error_log_text():
         return text
 
     return read
+
+
+@pytest.fixture
+def caught_logs():
+    """Capture records logged through the agage_archive package logger.
+
+    The package logger sets propagate=False (see logging_config.py), so pytest's
+    built-in caplog fixture -- which attaches to the root logger -- never sees these
+    records. This attaches a handler directly to the agage_archive logger instead.
+
+    Yields:
+        list[logging.LogRecord]: Records logged during the test, appended live.
+    """
+
+    records = []
+
+    class _ListHandler(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    handler = _ListHandler()
+    PACKAGE_LOGGER.addHandler(handler)
+    try:
+        yield records
+    finally:
+        PACKAGE_LOGGER.removeHandler(handler)

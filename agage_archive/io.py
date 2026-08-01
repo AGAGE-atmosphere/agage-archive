@@ -1,5 +1,6 @@
 import xarray as xr
 import json
+import logging
 import pandas as pd
 import numpy as np
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -16,6 +17,8 @@ from agage_archive.data_selection import read_release_schedule, read_data_exclud
 from agage_archive.definitions import instrument_type_definition, get_instrument_type, \
     get_instrument_number, instrument_selection_text
 from agage_archive.util import tz_local_to_utc, parse_fortran_format, nc_to_csv
+
+logger = logging.getLogger(__name__)
 
 
 gcwerks_species = {"c2f6": "pfc-116",
@@ -203,7 +206,7 @@ def read_nc(network, species, site, instrument,
     nc_file, sub_path = read_nc_path(network, species, site, instrument)
 
     if verbose:
-        print(f"... reading {nc_file}")
+        logger.info(f"... reading {nc_file}")
 
     # Read netCDF file
     with open_data_file(nc_file, network, sub_path=sub_path, verbose=verbose) as f:
@@ -292,7 +295,7 @@ def read_nc(network, species, site, instrument,
 
     # Resample dataset, if needed and called
     if resample:
-        ds = resample_function(ds)
+        ds = resample_function(ds, verbose=verbose)
 
     # Check that time is monotonic and remove duplicate indices
     if not pd.Index(ds.time).is_monotonic_increasing:
@@ -419,7 +422,7 @@ def ale_gage_timestamp_issues(datetime, timestamp_issues,
     for timestamp_issue in timestamp_issues:
         if timestamp_issue in datetime.values:
             if verbose:
-                print(f"... Timestamp issue at {timestamp_issue} replacing with {timestamp_issues[timestamp_issue]}")
+                logger.info(f"... Timestamp issue at {timestamp_issue} replacing with {timestamp_issues[timestamp_issue]}")
             datetime = datetime.replace(timestamp_issue, timestamp_issues[timestamp_issue])
 
     return datetime
@@ -1543,7 +1546,7 @@ def output_write(ds, out_path, filename,
     '''
 
     if verbose:
-        print(f"... writing {str(out_path) + '/' + output_subpath + '/' + filename}")
+        logger.info(f"... writing {str(out_path) + '/' + output_subpath + '/' + filename}")
 
     # Can't have some time attributes
     if "units" in ds.time.attrs:

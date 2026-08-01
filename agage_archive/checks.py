@@ -13,10 +13,13 @@ failure). The individual ``check_*`` helpers are pure — they take already-pars
 return a list of problem descriptions — so they are straightforward to unit test.
 """
 
+import logging
 import pandas as pd
 
 from agage_archive.config import open_data_file, data_file_list, load_json
 from agage_archive.formatting import format_species
+
+logger = logging.getLogger(__name__)
 
 
 def _is_blank_or_excluded(value):
@@ -286,4 +289,4 @@ def check_input_files(network, verbose=True):
             f"Input configuration check failed for '{network}' with {len(problems)} "
             "problem(s):\n" + "\n".join(f"  - {p}" for p in problems))
     if verbose:
-        print(f"Input configuration for '{network}': all checks passed.")
+        logger.info(f"Input configuration for '{network}': all checks passed.")

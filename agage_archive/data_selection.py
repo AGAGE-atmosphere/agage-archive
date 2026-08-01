@@ -1,9 +1,12 @@
+import logging
 import pandas as pd
 import numpy as np
 import json
 
 from agage_archive.config import open_data_file, data_file_list, load_json
 from agage_archive.formatting import format_species
+
+logger = logging.getLogger(__name__)
 
 
 def read_data_combination(network, species, site,
@@ -19,7 +22,7 @@ def read_data_combination(network, species, site,
         dict: Dictionary of instrument dates
     '''
 
-    warning_message = f"WARNING: No instrument dates found for {species} at {site.upper()}."
+    warning_message = f"No instrument dates found for {species} at {site.upper()}."
 
     default_output = {"GCMS-Medusa": [None, None]}
 
@@ -31,7 +34,7 @@ def read_data_combination(network, species, site,
 
     if len(files) == 0:
         if verbose:
-            print(warning_message)
+            logger.warning(warning_message)
         return default_output
 
     if len(files) > 1:
@@ -46,7 +49,7 @@ def read_data_combination(network, species, site,
 
     if len(df) == 0:
         if verbose:
-            print(warning_message)
+            logger.warning(warning_message)
         return default_output
     
     if len(df) > 1: 
@@ -73,7 +76,7 @@ def read_data_combination(network, species, site,
 
     if len(instrument_dates) == 0:
         if verbose:
-            print(warning_message)
+            logger.warning(warning_message)
         return default_output
     
     if len(instrument_dates) == 1:
