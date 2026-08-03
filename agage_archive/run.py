@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pandas as pd
 import traceback
@@ -13,6 +14,9 @@ from agage_archive.checks import check_input_files
 from agage_archive.formatting import format_species
 from agage_archive.convert import monthly_baseline
 from agage_archive.definitions import define_instrument_number, instrument_selection_text
+from agage_archive.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_error(e):
@@ -232,7 +236,7 @@ def run_individual_site(site, species, network, instrument,
                                 verbose=verbose)
 
                         if monthly:
-                            ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
+                            ds_baseline_monthly = monthly_baseline(ds, ds_baseline, verbose=verbose)
                             ds_baseline_monthly.attrs["instrument_selection"] = instrument_selection_text_str
                             output_dataset(ds_baseline_monthly, network, instrument=instrument_str,
                                 output_subpath=output_subpath + "/monthly-baseline",
@@ -240,7 +244,9 @@ def run_individual_site(site, species, network, instrument,
                                 extra="monthly-baseline",
                                 verbose=verbose)
                     except Exception as e:
-                        error_log.append(get_error(e))
+                        error = get_error(e)
+                        logger.error(f"{site} {species} ({instrument}): {error}")
+                        error_log.append(error)
                 elif monthly and not baseline:
                     raise NotImplementedError("Monthly baseline files can only be produced if baseline flag is specified")
 
@@ -252,8 +258,10 @@ def run_individual_site(site, species, network, instrument,
 
     except Exception as e:
 
-        error_log.append(get_error(e))
-    
+        error = get_error(e)
+        logger.error(f"{site} {species} ({instrument}): {error}")
+        error_log.append(error)
+
     return (site, species, error_log[0])
 
 
@@ -298,7 +306,8 @@ def run_individual_instrument(network, instrument,
         # Process only those species that are in the release schedule
         species_to_process = [sp for sp in species if sp in rs.index.values]
         if not species_to_process:
-            print(f"No species to process for {instrument}, skipping...")
+            if verbose:
+                logger.info(f"No species to process for {instrument}, skipping...")
             return
     else:
         # Process all species in the release schedule
@@ -311,7 +320,7 @@ def run_individual_instrument(network, instrument,
         for site in rs.columns:
             if site in sites or not sites:
                 if verbose:
-                    print(f"Processing {sp} at {site} for {instrument}")
+                    logger.info(f"Processing {sp} at {site} for {instrument}")
                 result = run_individual_site(site, sp, network, instrument,
                                             rs, read_function, read_baseline_function, instrument_out,
                                             baseline, monthly, verbose, resample, top_level_only,
@@ -351,7 +360,8 @@ def run_combined_site(site, species, network,
             screen when reading flask datasets. Default to False.
     """
 
-    print(f"Processing files for {site}")
+    if verbose:
+        logger.info(f"Processing files for {site}")
 
     instrument_dates = {}
     for sp in species:
@@ -367,7 +377,8 @@ def run_combined_site(site, species, network,
         # Process only those species that are in the data selection file
         species_to_process = [sp for sp in species if sp in df.index.values]
         if not species_to_process:
-            print(f"No species to process for {site}, skipping...")
+            if verbose:
+                logger.info(f"No species to process for {site}, skipping...")
             return [(site, "None", "")]
     else:
         # Process all species in the data selection file
@@ -382,7 +393,7 @@ def run_combined_site(site, species, network,
 
             # Produce combined dataset
             if verbose:
-                print(f"... combining datasets for {sp} at {site}")
+                logger.info(f"... combining datasets for {sp} at {site}")
             ds = combine_datasets(network, sp, site,
                                   scale=choose_scale_defaults_file(network, "combined", site=site),
                                   verbose=verbose, resample=resample,
@@ -390,7 +401,7 @@ def run_combined_site(site, species, network,
 
             if baseline:
                 if verbose:
-                    print(f"... combining baselines for {sp} at {site}")
+                    logger.info(f"... combining baselines for {sp} at {site}")
                 # Note that GIT baselines is hard-wired here because Met Office not available for ALE/GAGE
                 ds_baseline = combine_baseline(network, sp, site,
                                             verbose=verbose,
@@ -405,15 +416,15 @@ def run_combined_site(site, species, network,
             output_subpath = f"{sp}"
 
             if verbose:
-                print(f"... outputting combined dataset for {sp} at {site}")
+                logger.info(f"... outputting combined dataset for {sp} at {site}")
             output_dataset(ds, network,
                         output_subpath=output_subpath,
                         instrument="",
                         verbose=verbose)
-            
+
             if baseline:
                 if verbose:
-                    print(f"... outputting combined baseline for {sp} at {site}")
+                    logger.info(f"... outputting combined baseline for {sp} at {site}")
                 output_dataset(ds_baseline, network,
                             output_subpath=output_subpath + "/baseline-flags",
                             instrument="",
@@ -421,7 +432,7 @@ def run_combined_site(site, species, network,
                             verbose=verbose)
 
                 if monthly:
-                    ds_baseline_monthly = monthly_baseline(ds, ds_baseline)
+                    ds_baseline_monthly = monthly_baseline(ds, ds_baseline, verbose=verbose)
                     output_dataset(ds_baseline_monthly, network,
                             output_subpath=output_subpath + "/monthly-baseline",
                             instrument="",
@@ -436,7 +447,9 @@ def run_combined_site(site, species, network,
 
         except Exception as e:
 
-            error_log.append(get_error(e))
+            error = get_error(e)
+            logger.error(f"{site} {sp}: {error}")
+            error_log.append(error)
 
     return [(site, sp, error) for sp, error in zip(species_to_process, error_log)]
 
@@ -510,7 +523,8 @@ def run_all(network,
             resample=True,
             top_level_only=False,
             flask_pair_agreement=False,
-            check_inputs=True):
+            check_inputs=True,
+            verbose=False):
     """Process data files for multiple instruments. Reads the release schedule to determine which
     instruments to process
 
@@ -521,7 +535,6 @@ def run_all(network,
         exclude (list): List of instruments to exclude from processing
         baseline (bool): Process baselines. Boolean as only one baseline flag is available (GIT)
         monthly (bool): Produce monthly baseline files
-        verbose (bool): Print progress to screen
         species (list): List of species to process. If empty, process all species
         resample (bool, optional): Whether to resample the data, if needed. Default to True.
         top_level_only (bool, optional): Whether to only output to the top-level directory,
@@ -531,6 +544,9 @@ def run_all(network,
         check_inputs (bool, optional): Run the input-file consistency checks
             (`checks.check_input_files`) before processing, and abort with a single error
             listing every problem if any are found. Default to True.
+        verbose (bool, optional): Print routine per-species/per-site progress messages.
+            Defaults to False, so only warnings, errors and the progress bars are shown.
+            Warnings and errors are always shown regardless of this setting.
     """
 
     if not network:
@@ -538,25 +554,25 @@ def run_all(network,
 
     if not isinstance(network, str):
         raise TypeError("network must be a string")
-    
+
     if not isinstance(delete, bool):
         raise TypeError("delete must be a boolean")
-    
+
     if not isinstance(combined, bool):
         raise TypeError("combined must be a boolean")
-    
+
     if not isinstance(baseline, bool):
         raise TypeError("baseline must be a boolean")
-    
+
     if not isinstance(monthly, bool):
         raise TypeError("monthly must be a boolean")
-    
+
     if not isinstance(instrument_include, list):
         raise TypeError("instrument_include must be a list")
-    
+
     if not isinstance(instrument_exclude, list):
         raise TypeError("instrument_exclude must be a list")
-    
+
     if not isinstance(species, list):
         raise TypeError("species must be a list")
 
@@ -568,6 +584,11 @@ def run_all(network,
 
     if not isinstance(check_inputs, bool):
         raise TypeError("check_inputs must be a boolean")
+
+    if not isinstance(verbose, bool):
+        raise TypeError("verbose must be a boolean")
+
+    configure_logging()
 
     # Validate the input configuration before touching the archive, so a bad config fails
     # up front rather than part-way through a run.
@@ -595,12 +616,10 @@ def run_all(network,
 
     # Must run combined instruments first
     if combined:
-        print("#########################################")
-        print("#####Processing combined instruments######")
-        print("#########################################")
+        logger.info("Processing combined instruments...")
 
         run_combined_instruments(network,
-                                baseline=baseline, verbose=True,
+                                baseline=baseline, verbose=verbose,
                                 monthly=monthly, species=species, sites=sites,
                                 resample=resample,
                                 flask_pair_agreement=flask_pair_agreement)
@@ -618,15 +637,13 @@ def run_all(network,
     else:
         instruments = instrument_include
 
-    print("#########################################")
-    print("#####Processing individual instruments######")
-    print("#########################################")
+    logger.info("Processing individual instruments...")
 
     for instrument in tqdm(instruments):
         if instrument not in instrument_exclude:
             baseline_flag = {True: "git_pollution_flag", False: ""}[baseline]
-            run_individual_instrument(network, instrument, 
-                                    baseline=baseline_flag, verbose=True,
+            run_individual_instrument(network, instrument,
+                                    baseline=baseline_flag, verbose=verbose,
                                     monthly=monthly, species=species, sites=sites,
                                     resample=resample, top_level_only=top_level_only,
                                     flask_pair_agreement=flask_pair_agreement)
@@ -637,17 +654,17 @@ def run_all(network,
                                     network=network, errors = "ignore_inputs")
         copy_to_archive(readme_file, network)
     except FileNotFoundError:
-        print("No README file found")
+        logger.info("No README file found")
 
     try:
         changelog_file = data_file_path(filename='CHANGELOG.md',
                                     network=network, errors = "ignore_inputs")
         copy_to_archive(changelog_file, network)
     except FileNotFoundError:
-        print("No CHANGELOG file found")
+        logger.info("No CHANGELOG file found")
 
     # If error log files have been created, warn the user
     if data_file_path("error_log_combined.txt", network=network, errors="ignore").exists():
-        print("!!! Errors occurred during processing. See error_log_combined.txt for details")
+        logger.warning("Errors occurred during processing. See error_log_combined.txt for details")
     if data_file_path("error_log_individual.txt", network=network, errors="ignore").exists():
-        print("!!! Errors occurred during processing. See error_log_individual.txt for details")
+        logger.warning("Errors occurred during processing. See error_log_individual.txt for details")

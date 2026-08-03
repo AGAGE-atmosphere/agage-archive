@@ -197,3 +197,20 @@ def test_read_data_combination():
 
     assert instrument_dates["GCMD"][0] == "1994-03-15 00:00"
     assert instrument_dates["GCMD"][1] == "2010-06-01 00:00"
+
+
+def test_read_data_combination_no_entry_warns_only_when_verbose(caught_logs):
+    """A species with no data_combination entry falls back to a default silently or
+    with a warning, controlled by verbose -- unlike other warnings in the codebase, this
+    one is deliberately opt-in: callers such as run_individual_site pass verbose=False
+    because the absence of an entry is routine there, not a problem."""
+
+    species = "not-a-real-species"
+
+    read_data_combination("agage_test", species, "CGO", verbose=False)
+    assert caught_logs == []
+
+    read_data_combination("agage_test", species, "CGO", verbose=True)
+    assert len(caught_logs) == 1
+    assert caught_logs[0].levelname == "WARNING"
+    assert "No instrument dates found" in caught_logs[0].getMessage()

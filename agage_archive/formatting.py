@@ -1,4 +1,5 @@
 import json
+import logging
 import numpy as np
 import xarray as xr
 from datetime import datetime
@@ -8,6 +9,8 @@ from agage_archive import __version__ as code_version
 from agage_archive.config import open_data_file, data_file_path, load_json
 from agage_archive.util import is_number, lookup_username
 from agage_archive.definitions import instrument_type_definition, nc4_types
+
+logger = logging.getLogger(__name__)
 
 
 def prefix_instrument_type(instrument, instrument_type):
@@ -158,7 +161,7 @@ def format_attributes_global_instruments(ds,
                                                        instrument.get("instrument_type", ""))
                     attrs[attr + suffix_new] = value
                 else:
-                    print("WARNING: No " + attr + " found for instrument " + n + ". Setting to empty string")
+                    logger.warning("No " + attr + " found for instrument " + n + ". Setting to empty string")
                     attrs[attr + suffix_new] = ""
         
             instrument_count += 1

@@ -411,3 +411,8 @@ def test_run_all_rejects_non_list_species():
 def test_run_all_rejects_non_bool_baseline():
     with pytest.raises(TypeError, match="baseline must be a boolean"):
         run_all(NETWORK, baseline="yes")
+
+
+def test_run_all_rejects_non_bool_verbose():
+    with pytest.raises(TypeError, match="verbose must be a boolean"):
+        run_all(NETWORK, verbose="yes")

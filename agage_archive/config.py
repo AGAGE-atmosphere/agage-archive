@@ -1,5 +1,6 @@
 from pathlib import Path as _Path
 import json
+import logging
 import tarfile
 from zipfile import ZipFile, ZIP_DEFLATED
 import yaml
@@ -9,6 +10,8 @@ from functools import lru_cache
 import psutil
 from shutil import copy, rmtree
 import os
+
+logger = logging.getLogger(__name__)
 
 
 ERROR_MODES = {"raise", "ignore", "ignore_inputs", "ignore_outputs"}
@@ -143,25 +146,25 @@ class Paths():
             if isinstance(value, dict):
                 if not site:
                     if errors == "raise":
-                        print(f"WARNING: Site not set for {key}... skipping")
+                        logger.warning(f"Site not set for {key}... skipping")
                 else:
                     if site not in value.keys():
                         if errors == "raise":
-                            print(f"WARNING: Site {site} not found in {key}... skipping")
+                            logger.warning(f"Site {site} not found in {key}... skipping")
                     else:
                         self.__setattr__(key, value[site])
             else:
                 self.__setattr__(key, value)
-            
+
             # Test that path exists
             if errors == "raise" or errors == "ignore_outputs":
                 if isinstance(value, dict):
                     if not site:
-                        print(f"WARNING: Site not set for {key}... skipping")
+                        logger.warning(f"Site not set for {key}... skipping")
                         continue
                     else:
                         if site not in value.keys():
-                            print(f"WARNING: Site {site} not found in {key}... skipping")
+                            logger.warning(f"Site {site} not found in {key}... skipping")
                             continue
                         full_path = self.data / network / value[site]
                 else:
@@ -252,8 +255,8 @@ def setup(network = ""):
                   default_flow_style=False,
                   sort_keys=False)
         
-    print(f"Config file written to {paths.root / 'config.yaml'}")
-    print("Config file has been populated with default sub-paths relative to data/network. " + \
+    logger.info(f"Config file written to {paths.root / 'config.yaml'}")
+    logger.info("Config file has been populated with default sub-paths relative to data/network. " + \
           "If you want to move the data elsewhere, manually modify the sub-paths in the config file. " + \
           "If the files need to be outside of the data directory, use symlinks.")
 
@@ -424,7 +427,7 @@ def open_data_file(filename,
                          site=site)
     
     if verbose:
-        print(f"... opening {pth / filename}")
+        logger.info(f"... opening {pth / filename}")
 
     if pth.suffix == ".zip":
         # Do not use a `with` block here: closing the ZipFile before returning
@@ -661,7 +664,7 @@ def delete_archive(network, archive_suffix_string=""):
                                 errors="ignore_inputs",
                                 extra_archive=archive_suffix_string)
     except FileNotFoundError:
-        print(f"Output directory or archive for does not exist, continuing")
+        logger.info(f"Output directory or archive for does not exist, continuing")
         return
 
     # Find all files in output directory
@@ -669,7 +672,7 @@ def delete_archive(network, archive_suffix_string=""):
                                 sub_path=archive_suffix(path.output_path, archive_suffix_string),
                                 errors="ignore")
 
-    print(f'Deleting all files in {out_pth}')
+    logger.info(f'Deleting all files in {out_pth}')
 
     # If out_pth is a zip file, delete it
     if out_pth.suffix == ".zip" and out_pth.exists():

@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -7,6 +8,8 @@ from openghg_calscales import convert as convert_scale
 from agage_archive.config import open_data_file, load_json
 from agage_archive.data_selection import calibration_scale_default
 from agage_archive.formatting import format_species, format_variables, comment_append
+
+logger = logging.getLogger(__name__)
 
 
 def std_ddof0(x):
@@ -389,20 +392,22 @@ def find_inlet_height_changes(ds):
 def resample(ds,
             resample_period = "3600s",
             resample_threshold = "600s",
-            ignore_inlet = False
+            ignore_inlet = False,
+            verbose = False,
             ):
     """Resample the dataset to a regular time interval
-    
+
     Args:
         ds (xarray.Dataset): Dataset
-        resample_period (str, optional): Period to resample to. Defaults to "3600s". 
+        resample_period (str, optional): Period to resample to. Defaults to "3600s".
             Pandas alias for time period, e.g. "1H" for hourly, "1D" for daily.
         resample_threshold (str, optional): Threshold for resampling, in seconds. Defaults to 600s.
             If the median time difference is greater than this threshold, the dataset is not resampled.
-            So, if the threshold is 600s and the resample_period is 3600s and 1-minute data is provided, 
+            So, if the threshold is 600s and the resample_period is 3600s and 1-minute data is provided,
             the dataset is resampled to houry. If 20-minute data is provided, the dataset is not resampled.
             Pandas alias for time period, e.g. "600s" for 10 minutes.
         ignore_inlet (bool, optional): If True, ignore changes in inlet height. Defaults to False.
+        verbose (bool, optional): Print progress to screen. Defaults to False.
 
     Returns:
         xarray.Dataset: Resampled dataset
@@ -427,7 +432,8 @@ def resample(ds,
 
         # If not considering inlet changes, resample
         if ignore_inlet:
-                print("... resampling")
+                if verbose:
+                    logger.info("... resampling")
                 df = resampler(ds.to_dataframe(),
                                variable_defaults,
                                ds.time.values[-1] + pd.Timedelta(ds.sampling_period.values[-1], unit="s"),
@@ -452,12 +458,14 @@ def resample(ds,
                     resample_or_group = "resample"
 
             if resample_or_group == "resample":
-                print("... resampling")
+                if verbose:
+                    logger.info("... resampling")
                 df = resampler(ds.to_dataframe(), variable_defaults, inlet_height_change_times[-1], resample_period=resample_period)
                 comment_str = f"Resampled to {resample_period}."
 
             else:
-                print("... grouping inlets and averaging/resampling")
+                if verbose:
+                    logger.info("... grouping inlets and averaging/resampling")
                 df = grouper(ds.to_dataframe(),
                             inlet_height_changes,
                             inlet_height_change_times,
@@ -514,12 +522,13 @@ def resample(ds,
         return ds
 
 
-def monthly_baseline(ds, ds_baseline):
+def monthly_baseline(ds, ds_baseline, verbose=False):
     '''Calculate monthly baseline mole fractions
 
     Args:
         ds (xr.Dataset): Dataset
         ds_baseline (xr.Dataset): Baseline dataset
+        verbose (bool, optional): Print progress to screen. Defaults to False.
 
     Returns:
         xr.Dataset: Dataset with monthly baseline mole fractions
@@ -543,7 +552,8 @@ def monthly_baseline(ds, ds_baseline):
         ds_monthly = resample(ds_baseline_points,
                               resample_period="1MS",
                               resample_threshold="1000D",
-                              ignore_inlet=True) # Big number so that everything gets resampled
+                              ignore_inlet=True, # Big number so that everything gets resampled
+                              verbose=verbose)
 
     # Relabel some attributes
     ds_monthly["mf_variability"].attrs["long_name"] = "Monthly standard deviation of baseline mole fractions"
