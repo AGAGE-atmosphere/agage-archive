@@ -13,7 +13,7 @@ import unicodedata
 
 from agage_archive.config import Paths, open_data_file, data_file_path, \
     data_file_list, delete_archive, create_empty_archive, \
-    output_path, load_json
+    output_path, load_json, archive_zip_root
 
 logger = logging.getLogger(__name__)
 
@@ -351,12 +351,14 @@ def nc_to_csv(ds):
     return header, df
 
 
-def archive_write_csv(archive_path, filename, data):
+def archive_write_csv(archive_path, filename, data, version=""):
     """Write data to a CSV file in an archive or directory.
     Args:
         archive_path (Path): Path to the archive or directory
         filename (str): Name of the file to write
         data (str): Data to write to the file
+        version (str, optional): Network version (from attributes.json), used to
+            name the top-level folder inside a zip archive. Defaults to "".
     Returns:
         None: Writes the data to the specified file in the archive or directory
     """
@@ -371,8 +373,9 @@ def archive_write_csv(archive_path, filename, data):
 
     if archive_path.suffix == ".zip":
         with ZipFile(archive_path, mode="a", compression=ZIP_DEFLATED, compresslevel=6) as zip:
-            # prepend the archive name to the output filename so that it unzips to a folder
-            output_filename = archive_path.name.split(".zip")[0] + "/" + filename
+            # Nest members under a single top-level folder (mirroring the .nc archive)
+            # so the zip extracts into one self-named directory rather than scattering files.
+            output_filename = f"{archive_zip_root(archive_path, version)}/{filename}"
             # Explicitly encode as UTF-8 to prevent character encoding issues
             # Use 'utf-8-sig' to add BOM for better compatibility with some programs
             zip.writestr(output_filename, data.encode('utf-8-sig'))
@@ -398,6 +401,10 @@ def archive_to_csv(network):
 
     paths = Paths(network, errors="ignore_inputs")
 
+    # Network version (from attributes.json) names the top-level folder inside the
+    # csv zip, mirroring the .nc archive.
+    version = load_json("attributes.json", network=network).get("version", "")
+
     # Delete the csv archive if it exists and create an empty one
     delete_archive(network,
                    archive_suffix_string = archive_suffix_str)
@@ -405,11 +412,19 @@ def archive_to_csv(network):
     csv_archive_path, _ = output_path(network, "_", "_", "_",
                             errors="ignore",
                             extra_archive=archive_suffix_str)
-    
+
     # Get the file list for the nc archive
     _, nc_sub_path, files = data_file_list(network,
                                         paths.output_path,
                                         errors="ignore_inputs")
+
+    # A zip-based .nc archive nests its members under a top-level version folder;
+    # strip that prefix so the csv paths mirror it rather than double-nesting.
+    nc_archive_path = data_file_path("", network, sub_path=paths.output_path,
+                                     errors="ignore_inputs")
+    nc_root_prefix = ""
+    if nc_archive_path.suffix == ".zip":
+        nc_root_prefix = archive_zip_root(nc_archive_path, version) + "/"
 
     logger.info(f"Converting {len(files)} files to CSV format...")
 
@@ -418,13 +433,18 @@ def archive_to_csv(network):
         # directory-based archive; there is nothing to convert or copy for those.
         if f.endswith("/"):
             continue
-        if not f.endswith(".nc"):
+
+        # Relative path within the archive (prefix present only for zip archives)
+        rel = f[len(nc_root_prefix):] if nc_root_prefix and f.startswith(nc_root_prefix) else f
+
+        if not rel.endswith(".nc"):
             # Copy the file as is
-            archive_write_csv(csv_archive_path, f,
-                            data_file_path(f, network).read_text(encoding='utf-8'))
+            archive_write_csv(csv_archive_path, rel,
+                            data_file_path(rel, network).read_text(encoding='utf-8'),
+                            version=version)
 
         else:
-            filename_csv = f"{f.split('.nc')[0]}.csv"
+            filename_csv = f"{rel.split('.nc')[0]}.csv"
 
             with open_data_file(f, network, sub_path = nc_sub_path) as ncf:
                 with xr.open_dataset(ncf) as nc_ds:
@@ -434,7 +454,8 @@ def archive_to_csv(network):
             header, df = nc_to_csv(ds)
             output_data = "\n".join(header) + "\n" + df.to_csv(index=False)
 
-            archive_write_csv(csv_archive_path, filename_csv, output_data)
+            archive_write_csv(csv_archive_path, filename_csv, output_data,
+                            version=version)
 
 
 def compare_archive_versions(version_1, version_2):

@@ -152,9 +152,10 @@ def archive(request):
     (data_file_path, output_write, create_empty_archive, delete_archive); only the
     directory path was covered before. Running the same golden manifest against zip output
     pins the zip write path end to end — the path used by the downstream dvc-tracked
-    release repositories. Zip members are stored under their archive path with no stem
-    prefix, so extracting the archive reproduces the exact directory tree and the existing
-    reader compares against the same reference manifest.
+    release repositories. Zip members nest under a single top-level folder (named after the
+    archive and version) so the archive extracts into one self-named directory; descending
+    into that folder reproduces the exact directory tree, which is compared against the same
+    reference manifest.
 
     Returns:
         tuple[dict, list[str]]: Manifest, and the contents of any error log written.
@@ -184,7 +185,12 @@ def archive(request):
             with tempfile.TemporaryDirectory() as extract_dir:
                 with ZipFile(zip_path, "r") as archive_zip:
                     archive_zip.extractall(extract_dir)
-                manifest = archive_manifest(extract_dir)
+                # The archive must extract into a single self-named top-level folder;
+                # descend into it so the manifest mirrors the directory backend.
+                roots = [p for p in Path(extract_dir).iterdir() if not p.name.startswith(".")]
+                assert len(roots) == 1 and roots[0].is_dir(), \
+                    f"expected a single top-level folder in the zip, found {[p.name for p in roots]}"
+                manifest = archive_manifest(roots[0])
         else:
             manifest = archive_manifest(out_dir)
 
