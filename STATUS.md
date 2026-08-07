@@ -5,16 +5,16 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-07-31 (A1–A4 combined-file attributes: owner union, baseline
-provenance, comment de-dup; plus comment ordering + #148 instrument-type prefix)
+**Last updated:** 2026-08-07 (0.3.0 release preparation: zip single-root packaging,
+CHANGELOG completed for #166/#170)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
 `WONTFIX` with a one-line reason rather than deleting it.
 
-The full suite currently has an existing baseline failure: eight Picarro checksum
-differences in the golden manifest, reproduced on `origin/main` with the current
-environment. Do not regenerate the manifest until the cause is resolved.
+The full suite passes as of 2026-08-07: **123 tests, ~100 s**, in the `agage` conda
+environment. The eight Picarro golden-manifest checksum differences recorded here
+earlier no longer reproduce.
 
 ---
 
@@ -519,8 +519,9 @@ rebuilding.
         agage_archive` yields a package that cannot import. Downstream repos depend on this
         package, so the real dependency list living in an un-consumed `requirements.txt` is
         a genuine packaging bug, not just untidiness.
-      - `requires-python = ">=3.7"` is stale. The code calls `DataFrame.map`, which needs
-        pandas ≥ 2.1, which needs Python ≥ 3.9; the working environment is 3.11.
+      - ~~`requires-python = ">=3.7"` is stale.~~ ✅ Corrected to `>=3.9` on 2026-08-07
+        (metadata only). The code calls `DataFrame.map`, which needs pandas ≥ 2.1, which
+        needs Python ≥ 3.9; the working environment is 3.11.
       - The version is duplicated between `pyproject.toml` and
         `agage_archive/__init__.py`. This one matters beyond tidiness: `__version__` is
         written into every output file as `processing_code_version`, so the two drifting
@@ -554,6 +555,8 @@ Record anything that changes the plan, especially anything touching output forma
 | 2026-07-31 | **Combined comment ordering — most-recent first.** The combined `comment` ran oldest-first while the numbered `instrument_*` attributes ran newest-first; the two disagreed in direction (a reader could not line them up). Chose the lowest-risk fix: reverse the *comment* to newest-first (in `combine_comments`, using the same date sort as the instrument numbering) rather than renumber `instrument_*`. Renumbering was rejected because newest-first `instrument_*` is the entrenched convention — it matches individual files (`instrument` = current detector) and #167's anchoring on the most recent instrument. Note the two lists still cannot index-align, because the comment has one entry per `data_combination` instrument while `instrument_*` has one per physical detector (Medusa = two). Changed the comment on 10 combined files. |
 | 2026-07-31 | **#148 — instrument identifiers prefixed with their type in combined files.** Numbered instrument attributes now read e.g. `"GCMS-Medusa - agilent_5975"` (issue's `" - "` separator), so an opaque identifier is attributable to a type. Skipped when the identifier already begins with its type (`GCMD`, `GAGE_GCMD`, `ALE_GCMD`, `GCMS-ADS`), to avoid bloat/duplication. Combined files only (individual files have an unambiguous `instrument_type`); affected the 2 `ch3ccl3` files that carry Medusa's two detectors. Closes #148. |
 | 2026-07-29 | **Contested top-level files now raise.** If more than one instrument is eligible to write `{species}/` because the species has no row in the site's `data_combination` file, processing fails with an error naming the species and site, rather than letting run order decide. Sites in the real archive have already been corrected by hand; this makes a regression impossible to miss. |
+| 2026-08-04 | **Zip archives nest under a single top-level `<archive stem>-<version>` folder** (#212), so both the `.nc` and CSV zips extract into one self-named directory instead of scattering their contents. Chosen implementation: repackage the finished zip as the final step of `run_all` (`nest_archive_zip`), rather than prefixing each member as it is written. Prefixing at write time was tried first and rejected — the pipeline reads members back out of the archive while combining (e.g. the recommended-file pattern match in `run_all`), so changing the member paths mid-run corrupted the combined baseline. The version comes from the *network's* `attributes.json`, not `__version__`; directory-based outputs are untouched, being a named container already. |
+| 2026-08-07 | **0.3.0 release preparation.** Version already at 0.3.0 in `pyproject.toml` and `agage_archive/__init__.py` (bumped 2026-07-29). CHANGELOG completed: #166 (combined baseline alignment) and #170 (`read_ale_gage` network-name check removed) had been merged after the `v0.2.1` tag but never recorded. Stale `v0.2.1` *branch* deleted — it duplicated the tag and made every `v0.2.1` rev-range ambiguous. `requires-python` corrected to `>=3.9`; the rest of H3 (missing `dependencies`, duplicated version) deliberately deferred, as an archive carrying this code version has already been published and packaging metadata should not change substantively underneath it. |
 
 ### Open questions
 
