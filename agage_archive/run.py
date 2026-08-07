@@ -5,7 +5,7 @@ import traceback
 from tqdm import tqdm
 
 from agage_archive.config import Paths, open_data_file, data_file_list, data_file_path, \
-    copy_to_archive, delete_archive, create_empty_archive
+    copy_to_archive, delete_archive, create_empty_archive, nest_archive_zip
 from agage_archive.data_selection import read_release_schedule, read_data_combination, \
     choose_scale_defaults_file, data_combination_species
 from agage_archive.io import combine_datasets, combine_baseline, \
@@ -662,6 +662,11 @@ def run_all(network,
         copy_to_archive(changelog_file, network)
     except FileNotFoundError:
         logger.info("No CHANGELOG file found")
+
+    # Final packaging: nest a zip archive under a single top-level folder so it extracts
+    # into one self-named directory. Done last, after all read-back-during-combine is
+    # complete, so processing still sees archive-relative member paths.
+    nest_archive_zip(network)
 
     # If error log files have been created, warn the user
     if data_file_path("error_log_combined.txt", network=network, errors="ignore").exists():

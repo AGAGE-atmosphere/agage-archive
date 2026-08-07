@@ -649,6 +649,68 @@ def archive_suffix(path, suffix):
         return name
 
 
+def archive_zip_root(archive_path, version=""):
+    """Top-level folder that a zip archive's members nest under.
+
+    So the zip extracts into a single self-named directory
+    (e.g. ``agage-public-archive-testv1/``) rather than scattering its
+    contents into the extraction directory. Applies to zip archives only;
+    directory-based outputs are already a named container.
+
+    Args:
+        archive_path (Path or str): Path to the .zip archive.
+        version (str, optional): Version string from the network's
+            attributes.json. Appended to the folder name when present.
+    Returns:
+        str: Folder name to prepend to each member path.
+    """
+
+    stem = _Path(archive_path).name.split(".zip")[0]
+    version = version.replace(" ", "") if version else ""
+    return f"{stem}-{version}" if version else stem
+
+
+def nest_archive_zip(network, archive_suffix_string=""):
+    """Repackage the output zip so every member sits under one top-level folder.
+
+    The whole processing pipeline writes members at archive-relative paths (e.g.
+    ``ch4/file.nc``) because it reads them back by that path while combining. This is
+    the final packaging step: it rewrites the finished zip so its members nest under a
+    single ``<stem>-<version>`` folder, so the archive extracts into one self-named
+    directory rather than scattering its contents. Directory-based outputs already are a
+    named container and are left untouched.
+
+    Idempotent: if the archive is already nested under the expected root it is left as is.
+
+    Args:
+        network (str): Network for output filenames.
+        archive_suffix_string (str, optional): Suffix on the archive name (e.g. "-csv").
+            Defaults to "".
+    """
+
+    archive_path, _ = output_path(network, "_", "_", "_",
+                                  errors="ignore_inputs",
+                                  extra_archive=archive_suffix_string)
+
+    if archive_path.suffix != ".zip" or not archive_path.exists():
+        return
+
+    version = load_json("attributes.json", network=network).get("version", "")
+    root = archive_zip_root(archive_path, version)
+
+    tmp_path = archive_path.with_name(archive_path.name + ".tmp")
+    with ZipFile(archive_path, "r") as src:
+        members = src.infolist()
+        if members and all(m.filename.split("/", 1)[0] == root for m in members):
+            # Already nested (e.g. a re-run over an existing archive)
+            return
+        # Stream member by member so a large archive is never held wholly in memory
+        with ZipFile(tmp_path, "w", compression=ZIP_DEFLATED, compresslevel=6) as dst:
+            for m in members:
+                dst.writestr(f"{root}/{m.filename}", src.read(m))
+    tmp_path.replace(archive_path)
+
+
 def delete_archive(network, archive_suffix_string=""):
     """Delete all files in output directory before running
 

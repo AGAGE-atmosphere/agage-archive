@@ -101,6 +101,46 @@ def test_nc_to_csv():
     assert df["second"].tolist() == [0, 0, 0, 0, 0], "Second column does not have the expected data."
 
 
+def test_nest_archive_zip(monkeypatch):
+    """nest_archive_zip repackages a flat zip under one top-level folder, idempotently.
+
+    Uses the agage_test network with its output redirected to a zip, then writes members
+    at archive-relative paths (as the processing pipeline does) before nesting.
+    """
+
+    from tests.test_archive import _patch_config_output, NETWORK
+    from agage_archive.config import nest_archive_zip, output_path, archive_zip_root, load_json
+
+    _patch_config_output(monkeypatch, "output.zip")
+
+    archive, _ = output_path(NETWORK, "_", "_", "_", errors="ignore")
+    if archive.exists():
+        archive.unlink()
+
+    # Write members at archive-relative paths, mimicking the finished pipeline output
+    with ZipFile(archive, "w") as z:
+        z.writestr("README.md", "readme")
+        z.writestr("ch4/agage_test_mhd_ch4_testv1.nc", "data")
+
+    version = load_json("attributes.json", network=NETWORK).get("version", "")
+    root = archive_zip_root(archive, version)
+
+    try:
+        nest_archive_zip(NETWORK)
+        with ZipFile(archive) as z:
+            names = sorted(z.namelist())
+        assert names == [f"{root}/README.md", f"{root}/ch4/agage_test_mhd_ch4_testv1.nc"]
+        assert {n.split("/", 1)[0] for n in names} == {root}, "must extract into one folder"
+
+        # Idempotent: a second call must not double-nest
+        nest_archive_zip(NETWORK)
+        with ZipFile(archive) as z:
+            assert sorted(z.namelist()) == names
+    finally:
+        if archive.exists():
+            archive.unlink()
+
+
 def test_archive_write_csv():
     """Test the archive_write_csv function."""
 
@@ -114,17 +154,19 @@ def test_archive_write_csv():
         filename_with_subpath = "subfolder/test_output.csv"
         
         data = "col1,col2\n1,2\n3,4"
+        version = "testv1"
 
-        archive_write_csv(zip_path, filename, data)
-        archive_write_csv(zip_path, filename_with_subpath, data)
+        archive_write_csv(zip_path, filename, data, version=version)
+        archive_write_csv(zip_path, filename_with_subpath, data, version=version)
 
         # Check if the file was created
         with ZipFile(zip_path, mode="r") as zip:
 
-            # output_write_csv prepends the archive name to the output filename
-            zip_stem = zip_path.stem
-            filename_in_zip = f"{zip_stem}/{filename}"
-            filename_with_subpath_in_zip = f"{zip_stem}/{filename_with_subpath}"
+            # Members nest under a single "<archive stem>-<version>" folder so the
+            # zip extracts into one self-named directory, matching the .nc archive.
+            root = f"{zip_path.stem}-{version}"
+            filename_in_zip = f"{root}/{filename}"
+            filename_with_subpath_in_zip = f"{root}/{filename_with_subpath}"
 
             # Check if the file exists in the zip
             assert filename_in_zip in zip.namelist(), f"{filename_in_zip} not found in zip"
