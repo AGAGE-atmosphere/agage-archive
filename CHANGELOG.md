@@ -5,6 +5,12 @@ Notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Text from `attributes_site_species_instrument.json` is no longer appended twice in combined files.** `format_attributes` appends these entries when each instrument is read, and runs again on the combined dataset. If the most recently operating instrument in a combined file matched an entry, the text was appended a second time with no separator — for example, the GCMS-Medusa warning in the combined MHD `cfc-11` file appeared twice in `instrument_comment`. Text already present in the attribute is now not appended again. Individual-instrument files are unchanged.
+
 ## [0.3.0] - 2026-08-07
 
 ### Fixed
