@@ -5,6 +5,12 @@ Notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The `widgets.dashboard()` viewer (used by `visualisation.ipynb`) failed on zip archives built by 0.3.0, which nest every member under a single `<archive stem>-<version>/` folder. It treated that folder as the only species, then matched every species' top-level file at once and raised `ValueError: Duplicate options found in instrument and site combinations`. The widgets now detect the zip's top-level folder and search beneath it; flat zips from earlier versions and directory outputs still work. Archive output is unchanged.
+
 ## [0.3.0] - 2026-08-07
 
 ### Fixed

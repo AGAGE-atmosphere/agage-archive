@@ -4,7 +4,8 @@ import ipywidgets as widgets
 from glob import glob
 from pathlib import Path
 
-from agage_archive.config import Paths, data_file_list, open_data_file, is_jupyterlab_session
+from agage_archive.config import Paths, data_file_list, data_file_path, open_data_file, \
+    is_jupyterlab_session, archive_zip_root
 from agage_archive.visualise import plot_datasets, variables
 
 
@@ -13,6 +14,63 @@ instrument_site_filenames = {}
 
 # Global list to store variable names that can be plotted
 variable_names = list(variables.keys())
+
+
+def archive_root_prefix(network):
+    """ Top-level version folder that a zip archive's members are nested under
+
+    A finished zip archive extracts into a single ``<stem>-<version>/`` folder (see
+    nest_archive_zip), so member paths must be prefixed with it when searching. The folder
+    is read from the zip itself rather than rebuilt from attributes.json, so an archive
+    from a different version, or an older flat archive, can still be browsed.
+
+    Args:
+        network (str): Network
+
+    Returns:
+        str: Prefix including a trailing slash, or "" for a flat zip or a directory
+    """
+
+    paths = Paths(network, errors="ignore_inputs")
+
+    archive_path = data_file_path("", network, sub_path=paths.output_path,
+                                  errors="ignore_inputs")
+    if archive_path.suffix != ".zip":
+        return ""
+
+    files = data_file_list(network, sub_path=paths.output_path,
+                           errors="ignore_inputs")[2]
+    top_levels = {f.split("/", 1)[0] for f in files}
+    stem = archive_zip_root(archive_path)
+
+    if len(top_levels) == 1 and all("/" in f for f in files):
+        top_level = top_levels.pop()
+        if top_level.startswith(stem):
+            return top_level + "/"
+
+    return ""
+
+
+def output_species(network):
+    """ Get species names from the output directory structure
+
+    Args:
+        network (str): Network
+
+    Returns:
+        list: Sorted list of species
+    """
+
+    paths = Paths(network, errors="ignore_inputs")
+    prefix = archive_root_prefix(network)
+
+    species = []
+    for f in data_file_list(network, paths.output_path, errors="ignore_inputs")[2]:
+        rel = f[len(prefix):] if f.startswith(prefix) else f
+        if "/" in rel:
+            species.append(rel.split("/")[0])
+
+    return sorted(set(species))
 
 
 def file_search_species(network, file_type, species):
@@ -40,7 +98,7 @@ def file_search_species(network, file_type, species):
 
     files = data_file_list(network,
                            sub_path=f"{paths.output_path}",
-                           pattern=pattern,
+                           pattern=archive_root_prefix(network) + pattern,
                            errors="ignore_inputs",
                            sub_directories=False)[2]
 
@@ -238,21 +296,11 @@ def dashboard(network,
         file_types (list): List of file types to visualise. Defaults to ["high-frequency", "monthly-baseline", "individual-instruments"]
         mode (str) : how to plot the data. Defaults to "line", but can be set to "markers" if desired
     """
-    
-    paths = Paths(network, errors="ignore_inputs")    
-    
-    # Get species names from the output directory structure
-    species = []
-    for f in data_file_list(network, paths.output_path, errors="ignore_inputs")[2]:
-        if "/" in f:
-            species.append(f.split("/")[0])
-        else:
-            continue
+
+    species = output_species(network)
 
     if len(species) == 0:
         raise ValueError("No files found in the output directory")
-
-    species = sorted(set(species))
 
     # Create dropdown widget
     species_dropdown = widgets.Dropdown(
