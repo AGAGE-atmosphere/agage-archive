@@ -5,14 +5,13 @@ Working plan for the code-quality pass on `agage-archive`. Read
 structure must not change.
 
 **Started:** 2026-07-28
-**Last updated:** 2026-08-07 (0.3.0 release preparation: zip single-root packaging,
-CHANGELOG completed for #166/#170)
+**Last updated:** 2026-09-28 (widgets dashboard fixed for nested zip archives; T8)
 
 Update the checkboxes and the "Last updated" date as items land. Keep the findings
 register at the bottom in sync — if an item turns out to be a non-issue, mark it
 `WONTFIX` with a one-line reason rather than deleting it.
 
-The full suite passes as of 2026-08-07: **123 tests, ~100 s**, in the `agage` conda
+The full suite passes as of 2026-09-28: **131 tests, ~100 s**, in the `agage` conda
 environment. The eight Picarro golden-manifest checksum differences recorded here
 earlier no longer reproduce.
 
@@ -424,6 +423,16 @@ P4 (drop_duplicates) compound on top.
       clean. `run_all` runs it by default (`check_inputs=True`) before touching the
       archive and aborts if any problem is found; pass `check_inputs=False` to skip.
       Covered in `tests/test_checks.py`.
+- [x] **T8 — `widgets.py` file discovery against zip archives.** ✅ Done 2026-09-28 in
+      [tests/test_widgets.py](tests/test_widgets.py), parametrised over flat and nested
+      zips. Written after the single-root zip change (#212) broke `visualisation.ipynb`:
+      the dashboard took the version folder for the only species, and `fnmatch`'s `*`
+      (which matches `/`) then pulled every species' top-level file into one list,
+      raising `Duplicate options found in instrument and site combinations`. The widgets
+      now strip the zip's top-level folder, detected from the zip itself so older flat
+      archives and other versions still load. Covers species listing and
+      `update_instrument_site` for all three file types; the ipywidgets display code
+      remains untested.
 
 ---
 
