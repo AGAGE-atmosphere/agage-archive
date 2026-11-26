@@ -486,7 +486,11 @@ def format_attributes(ds, instruments = [],
                 if attrs["instrument"] in attributes_site_species_instrument[attrs["site_code"]][attrs["species"]]:
                     attributes_site_species_instrument = attributes_site_species_instrument[attrs["site_code"]][attrs["species"]][attrs["instrument"]]
                     for attr in attributes_site_species_instrument:
-                        attrs[attr] += attributes_site_species_instrument[attr]
+                        # format_attributes runs again on combined datasets, whose
+                        # attributes already carry the text appended when each
+                        # instrument was read. Skip it if already present.
+                        if attributes_site_species_instrument[attr] not in attrs[attr]:
+                            attrs[attr] += attributes_site_species_instrument[attr]
 
     ds_out = ds.copy(deep=True)
     ds_out.attrs = attrs.copy()
